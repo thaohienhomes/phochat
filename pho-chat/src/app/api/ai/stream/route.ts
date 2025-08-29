@@ -4,10 +4,14 @@ import { createOpenAI } from "@ai-sdk/openai";
 
 export const runtime = "edge";
 
-const openai = createOpenAI({
-  apiKey: process.env.AI_GATEWAY_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_KEY,
-  baseURL: process.env.AI_GATEWAY_BASE_URL || process.env.NEXT_PUBLIC_AI_GATEWAY_BASE_URL,
-});
+const apiKey = process.env.AI_GATEWAY_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_KEY;
+const baseURL = process.env.AI_GATEWAY_BASE_URL || process.env.NEXT_PUBLIC_AI_GATEWAY_BASE_URL;
+
+const openai = createOpenAI({ apiKey, baseURL });
+
+function json(status: number, data: any) {
+  return NextResponse.json(data, { status });
+}
 
 export async function POST(req: Request) {
   try {
@@ -16,22 +20,28 @@ export async function POST(req: Request) {
       prompt: string;
     };
 
-    if (!prompt) {
-      return NextResponse.json({ error: "Missing prompt" }, { status: 400 });
+    if (!prompt) return json(400, { error: "Missing prompt" });
+
+    if (!apiKey) {
+      return json(500, { error: "AI key missing. Set AI_GATEWAY_KEY (or NEXT_PUBLIC_AI_GATEWAY_KEY) in .env.local." });
+    }
+    // If using a gateway key (heuristic), require a baseURL to be set to avoid 401s against api.openai.com
+    if (/^vck_/i.test(apiKey) && !baseURL) {
+      return json(500, {
+        error:
+          "Gateway key detected but AI_GATEWAY_BASE_URL is not set. Set your AI gateway base URL (or NEXT_PUBLIC_AI_GATEWAY_BASE_URL) in .env.local.",
+      });
     }
 
-    const result = await streamText({
-      model: openai(model),
-      prompt,
-    });
+    const result = await streamText({ model: openai(model), prompt });
 
-    // Stream the response back to the client
-    // This returns a web Response that streams chunks as they arrive
-    // Next.js (edge runtime) can return this directly
-    // @ts-ignore - types expect a generic Response
+    // @ts-ignore - the AI SDK returns a Response-compatible stream
     return result.toAIStreamResponse();
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+  } catch (err: any) {
+    // Surface richer error info during dev
+    const message = err?.message || String(err);
+    const stack = err?.stack;
+    return json(500, { error: message, stack });
   }
 }
 
