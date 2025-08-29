@@ -20,6 +20,29 @@ const MODELS = [
   { id: "o3-mini", label: "o3-mini" },
 ];
 
+function SessionMessages({ sessionId }: { sessionId: string | null }) {
+  const session = useQuery(
+    "functions/getChatSession:getChatSession" as any,
+    (sessionId ? { sessionId } : undefined) as any
+  );
+  const messages: ChatMessage[] = (session as any)?.messages ?? [];
+  if (!sessionId) return null;
+  return (
+    <>
+      {messages.length === 0 && (
+        <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
+      )}
+      {messages.map((m) => (
+        <div key={m.id} className="text-sm">
+          <span className="font-medium mr-2">{m.role}:</span>
+          <span className="whitespace-pre-wrap">{m.content}</span>
+        </div>
+      ))}
+    </>
+  );
+}
+
+
 export default function ChatPage() {
   const params = useSearchParams();
   const initialSessionId = params.get("sessionId");
@@ -35,10 +58,7 @@ export default function ChatPage() {
   const [newUserId, setNewUserId] = React.useState<string>("");
   const [creating, setCreating] = React.useState<boolean>(false);
 
-  // Live session query (string-based until codegen is available)
-  const session = useQuery("functions/getChatSession:getChatSession" as any, (sessionId ? { sessionId } : undefined) as any);
-  const messages: ChatMessage[] = (session as any)?.messages ?? [];
-
+  // Mutations
   const createSessionMut = useMutation("functions/createChatSession:createChatSession" as any);
   const sendMessageMut = useMutation("functions/sendMessage:sendMessage" as any);
 
@@ -165,15 +185,7 @@ export default function ChatPage() {
         </div>
 
         <div className="h-[55vh] overflow-y-auto rounded-md border p-3 space-y-3 bg-background">
-          {messages.length === 0 && !streamingText && (
-            <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
-          )}
-          {messages.map((m) => (
-            <div key={m.id} className="text-sm">
-              <span className="font-medium mr-2">{m.role}:</span>
-              <span className="whitespace-pre-wrap">{m.content}</span>
-            </div>
-          ))}
+          <SessionMessages sessionId={sessionId} />
           {streamingText && (
             <div className="text-sm">
               <span className="font-medium mr-2">assistant:</span>
