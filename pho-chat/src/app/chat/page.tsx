@@ -23,7 +23,7 @@ const MODELS = [
 function SessionMessages({ sessionId }: { sessionId: string | null }) {
   const session = useQuery(
     "functions/getChatSession:getChatSession" as any,
-    (sessionId ? { sessionId } : undefined) as any
+    (sessionId ? { sessionId } : "skip") as any
   );
   const messages: ChatMessage[] = (session as any)?.messages ?? [];
   if (!sessionId) return null;
