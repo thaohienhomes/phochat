@@ -1,4 +1,5 @@
-import { mutation } from "./_generated/server";
+import { mutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 
 export const sendMessage = mutation({
@@ -11,7 +12,10 @@ export const sendMessage = mutation({
       createdAt: v.number(), // epoch millis
     }),
   },
-  handler: async ({ db }, { sessionId, message }) => {
+  handler: async (
+    { db }: MutationCtx,
+    { sessionId, message }: { sessionId: any; message: { id: string; role: string; content: string; createdAt: number } }
+  ) => {
     const session = await db.get(sessionId);
     if (!session) throw new Error("Session not found");
 

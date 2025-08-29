@@ -1,14 +1,14 @@
-import { httpAction, mutation } from "./_generated/server";
+import { httpAction, mutation } from "../_generated/server";
+import type { ActionCtx, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 
-export const handleWebhook = httpAction(async (ctx, request) => {
+export const handleWebhook = httpAction(async (ctx: ActionCtx, request: Request) => {
   try {
     const url = new URL(request.url);
     const provider = url.searchParams.get("provider") || "unknown";
     const body = await request.json().catch(() => ({}));
 
     if (provider === "revenuecat") {
-      // Example RevenueCat webhook payload shape is varied; we accept any and map basics
       const userId: string | undefined = body?.app_user_id || body?.event?.app_user_id;
       const tier: string | undefined = body?.entitlements?.pro ? "pro" : "free";
       const expiryMs: number | undefined = body?.expiration_at_ms || body?.event?.expiration_at_ms;
@@ -16,7 +16,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
       if (userId) {
         const existing = await ctx.db
           .query("subscriptions")
-          .withIndex("by_user", q => q.eq("user_id", userId))
+          .withIndex("by_user", (q: any) => q.eq("user_id", userId))
           .unique();
 
         if (existing) {
@@ -36,7 +36,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
 
         await ctx.db.insert("payments", {
           user_id: userId,
-          amount: 0, // RevenueCat purchases may not include amount here
+          amount: 0,
           status: "succeeded",
           provider: "revenuecat",
           created_at: Date.now(),
@@ -70,7 +70,6 @@ export const handleWebhook = httpAction(async (ctx, request) => {
   }
 });
 
-// Optional: convenience mutation to upsert subscription (not exposed via HTTP)
 export const upsertSubscription = mutation({
   args: {
     userId: v.string(),
@@ -78,10 +77,13 @@ export const upsertSubscription = mutation({
     expiry: v.number(),
     receipts: v.any(),
   },
-  handler: async ({ db }, { userId, tier, expiry, receipts }) => {
+  handler: async (
+    { db }: MutationCtx,
+    { userId, tier, expiry, receipts }: { userId: string; tier: string; expiry: number; receipts: any }
+  ) => {
     const existing = await db
       .query("subscriptions")
-      .withIndex("by_user", q => q.eq("user_id", userId))
+      .withIndex("by_user", (q: any) => q.eq("user_id", userId))
       .unique();
 
     if (existing) {
