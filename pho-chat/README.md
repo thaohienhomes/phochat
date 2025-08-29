@@ -2,7 +2,15 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, run the Convex dev server once to generate client code and push schema/functions:
+
+```bash
+# From the project root (the folder with package.json)
+cd pho-chat
+npx convex dev
+```
+
+Then run the Next.js dev server:
 
 ```bash
 npm run dev
