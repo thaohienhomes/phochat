@@ -1,0 +1,9 @@
+{
+  "project": "pho-chat",
+  "team": "local",
+  "prodUrl": null,
+  "functions": {
+    "directory": "./convex"
+  }
+}
+

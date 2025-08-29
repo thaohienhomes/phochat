@@ -2,11 +2,15 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+
+// Convex generated hooks & functions
+import { useLiveQuery, useMutation } from "convex/_generated/react";
+import { getChatSession, sendMessage, createChatSession } from "convex/_generated/functions";
 
 // Types (lightweight)
 type ChatMessage = { id: string; role: string; content: string; createdAt: number };
@@ -28,13 +32,34 @@ export default function ChatPage() {
   const [sending, setSending] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Live query for session
-  const session = useQuery<any, any, any>("functions/getChatSession:getChatSession" as any, sessionId ? { sessionId } : "skip" as any);
-  const messages: ChatMessage[] = session?.messages ?? [];
+  // New session form state
+  const [newUserId, setNewUserId] = React.useState<string>("");
+  const [creating, setCreating] = React.useState<boolean>(false);
+
+  // Live session query
+  const session = useLiveQuery(sessionId ? getChatSession : null, sessionId ? { sessionId } : undefined);
+  const messages: ChatMessage[] = (session as any)?.messages ?? [];
+
+  const createSessionMut = useMutation(createChatSession);
+  const sendMessageMut = useMutation(sendMessage);
 
   React.useEffect(() => {
     if (!sessionId && initialSessionId) setSessionId(initialSessionId);
   }, [initialSessionId, sessionId]);
+
+  async function handleCreateSession() {
+    if (!newUserId.trim()) return;
+    try {
+      setCreating(true);
+      setError(null);
+      const id = await createSessionMut({ userId: newUserId.trim(), model });
+      setSessionId(String(id));
+    } catch (e: any) {
+      setError(e.message || String(e));
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function handleSend() {
     if (!sessionId || !input.trim()) return;
@@ -43,26 +68,24 @@ export default function ChatPage() {
       setSending(true);
       setStreamingText("");
 
-      // 1) Immediately persist user message
-      await fetch("/api/test-sendMessage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, content: input }),
-      });
+      const userMessage = {
+        id: String(Date.now()),
+        role: "user",
+        content: input,
+        createdAt: Date.now(),
+      };
+      await sendMessageMut({ sessionId: sessionId as any, message: userMessage as any });
 
-      // 2) Kick off AI stream for assistant reply
+      // Stream AI response
       const res = await fetch("/api/ai/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model, prompt: input }),
       });
-
       if (!res.ok || !res.body) {
         const text = await res.text();
         throw new Error(text || "AI stream failed");
       }
-
-      // Stream chunks
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let done = false;
@@ -77,13 +100,13 @@ export default function ChatPage() {
         }
       }
 
-      // 3) Persist assistant message after stream completes
-      await fetch("/api/test-sendMessage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, content: acc }),
-      });
-
+      const assistantMessage = {
+        id: `${Date.now()}-a`,
+        role: "assistant",
+        content: acc,
+        createdAt: Date.now(),
+      };
+      await sendMessageMut({ sessionId: sessionId as any, message: assistantMessage as any });
       setInput("");
     } catch (e: any) {
       setError(e.message || String(e));
@@ -113,6 +136,19 @@ export default function ChatPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </div>
+
+        {/* New Session Flow */}
+        <div className="rounded-md border p-3 space-y-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Input placeholder="userId" value={newUserId} onChange={(e) => setNewUserId(e.target.value)} />
+            <Input placeholder="model" value={model} onChange={(e) => setModel(e.target.value)} />
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleCreateSession} disabled={creating || !newUserId.trim()}>
+              {creating ? "Creating…" : "New Session"}
+            </Button>
           </div>
         </div>
 
