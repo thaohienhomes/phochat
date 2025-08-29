@@ -1,4 +1,4 @@
-import { httpAction, mutation } from "convex/_generated/server";
+import { httpAction, mutation } from "convex/server";
 import { v } from "convex/values";
 
 export const handleWebhook = httpAction(async (ctx, request) => {
