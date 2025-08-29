@@ -13,11 +13,15 @@ export default function TestPage() {
   const [creating, setCreating] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [result, setResult] = React.useState<any>(null);
-  const [error, setError] = React.useState<string | null>(null);
+  const [createError, setCreateError] = React.useState<string | null>(null);
+  const [sendError, setSendError] = React.useState<string | null>(null);
+
+  const canCreate = Boolean(userId.trim() && model.trim());
+  const canSend = Boolean(sessionId && content.trim());
 
   async function createSession() {
     try {
-      setError(null);
+      setCreateError(null);
       setResult(null);
       setCreating(true);
       const res = await fetch("/api/createChatSession", {
@@ -31,7 +35,7 @@ export default function TestPage() {
       const id = typeof data === "string" ? data : data?.id || data?._id || data;
       setSessionId(String(id));
     } catch (e: any) {
-      setError(String(e.message || e));
+      setCreateError(String(e.message || e));
     } finally {
       setCreating(false);
     }
@@ -40,7 +44,7 @@ export default function TestPage() {
   async function sendMessage() {
     if (!sessionId) return;
     try {
-      setError(null);
+      setSendError(null);
       setSending(true);
       const res = await fetch("/api/test-sendMessage", {
         method: "POST",
@@ -51,7 +55,7 @@ export default function TestPage() {
       if (!res.ok) throw new Error(data?.error || "Failed to send message");
       setResult(data);
     } catch (e: any) {
-      setError(String(e.message || e));
+      setSendError(String(e.message || e));
     } finally {
       setSending(false);
     }
@@ -75,39 +79,41 @@ export default function TestPage() {
             onChange={(e) => setModel(e.target.value)}
           />
         </div>
-        <Button onClick={createSession} disabled={creating || !userId || !model}>
+        <Button onClick={createSession} disabled={creating || !canCreate}>
           {creating ? "Creating..." : "Create Session"}
         </Button>
         {sessionId && (
-          <p className="text-sm text-muted-foreground">Session ID: {sessionId}</p>
+          <Input
+            readOnly
+            value={sessionId}
+            className="border-green-500 focus-visible:ring-green-500"
+          />
+        )}
+        {createError && (
+          <p className="text-sm text-destructive">{createError}</p>
         )}
       </section>
 
-      {sessionId && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-medium">Send Message</h2>
-          <Textarea
-            placeholder="Type a message..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="min-h-[120px]"
-          />
-          <Button onClick={sendMessage} disabled={sending || !content}>
-            {sending ? "Sending..." : "Send Message"}
-          </Button>
-        </section>
-      )}
-
-      {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-          Error: {error}
-        </div>
-      )}
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Send Message</h2>
+        <Textarea
+          placeholder="Type a message..."
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          className="min-h-[120px]"
+        />
+        <Button onClick={sendMessage} disabled={sending || !canSend}>
+          {sending ? "Sending..." : "Send Message"}
+        </Button>
+        {sendError && (
+          <p className="text-sm text-destructive">{sendError}</p>
+        )}
+      </section>
 
       {result && (
         <section className="space-y-2">
           <h3 className="text-md font-medium">Response</h3>
-          <pre className="overflow-auto rounded-md border p-3 text-xs">
+          <pre className="whitespace-pre-wrap font-mono bg-muted overflow-auto rounded-md border p-3 text-xs">
             {JSON.stringify(result, null, 2)}
           </pre>
         </section>
