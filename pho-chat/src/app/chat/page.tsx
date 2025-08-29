@@ -36,7 +36,7 @@ export default function ChatPage() {
   const [creating, setCreating] = React.useState<boolean>(false);
 
   // Live session query (string-based until codegen is available)
-  const session = useQuery("functions/getChatSession:getChatSession" as any, sessionId ? { sessionId } : "skip" as any);
+  const session = useQuery("functions/getChatSession:getChatSession" as any, (sessionId ? { sessionId } : undefined) as any);
   const messages: ChatMessage[] = (session as any)?.messages ?? [];
 
   const createSessionMut = useMutation("functions/createChatSession:createChatSession" as any);
@@ -47,13 +47,19 @@ export default function ChatPage() {
   }, [initialSessionId, sessionId]);
 
   async function handleCreateSession() {
-    if (!newUserId.trim()) return;
+    console.log("[Chat] New Session clicked", { newUserId, model });
+    if (!newUserId.trim()) {
+      console.log("[Chat] Aborting: empty userId");
+      return;
+    }
     try {
       setCreating(true);
       setError(null);
       const id = await createSessionMut({ userId: newUserId.trim(), model });
+      console.log("[Chat] createChatSession result", id);
       setSessionId(String(id));
     } catch (e: any) {
+      console.error("[Chat] createChatSession failed", e);
       setError(e.message || String(e));
     } finally {
       setCreating(false);
@@ -61,7 +67,11 @@ export default function ChatPage() {
   }
 
   async function handleSend() {
-    if (!sessionId || !input.trim()) return;
+    console.log("[Chat] Send clicked", { sessionId, inputLength: input.length, model });
+    if (!sessionId || !input.trim()) {
+      console.log("[Chat] Aborting send: missing sessionId or empty input");
+      return;
+    }
     try {
       setError(null);
       setSending(true);
@@ -73,6 +83,7 @@ export default function ChatPage() {
         content: input,
         createdAt: Date.now(),
       };
+      console.log("[Chat] sendMessage user", userMessage);
       await sendMessageMut({ sessionId: sessionId as any, message: userMessage as any });
 
       // Stream AI response
@@ -105,9 +116,11 @@ export default function ChatPage() {
         content: acc,
         createdAt: Date.now(),
       };
+      console.log("[Chat] sendMessage assistant", { length: acc.length });
       await sendMessageMut({ sessionId: sessionId as any, message: assistantMessage as any });
       setInput("");
     } catch (e: any) {
+      console.error("[Chat] send flow failed", e);
       setError(e.message || String(e));
     } finally {
       setSending(false);
