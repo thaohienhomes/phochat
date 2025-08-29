@@ -4,8 +4,7 @@ import './globals.css';
 
 // Example shadcn/ui providers imported for ease of use across the app
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { ConvexProvider } from 'convex/react';
-import { convex } from '@/lib/convex';
+import { ConvexProviderClient } from '@/components/providers/convex-provider';
 
 
 const geistSans = Geist({
@@ -33,9 +32,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ConvexProvider client={convex}>
+        <ConvexProviderClient>
           <TooltipProvider>{children}</TooltipProvider>
-        </ConvexProvider>
+        </ConvexProviderClient>
       </body>
     </html>
   );
