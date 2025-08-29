@@ -8,9 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
-// Convex generated hooks & functions
-import { useLiveQuery, useMutation } from "convex/_generated/react";
-import { getChatSession, sendMessage, createChatSession } from "convex/_generated/functions";
+// Temporary fallback imports until codegen completes
+import { useQuery, useMutation } from "convex/react";
 
 // Types (lightweight)
 type ChatMessage = { id: string; role: string; content: string; createdAt: number };
@@ -36,12 +35,12 @@ export default function ChatPage() {
   const [newUserId, setNewUserId] = React.useState<string>("");
   const [creating, setCreating] = React.useState<boolean>(false);
 
-  // Live session query
-  const session = useLiveQuery(sessionId ? getChatSession : null, sessionId ? { sessionId } : undefined);
+  // Live session query (string-based until codegen is available)
+  const session = useQuery("functions/getChatSession:getChatSession" as any, sessionId ? { sessionId } : "skip" as any);
   const messages: ChatMessage[] = (session as any)?.messages ?? [];
 
-  const createSessionMut = useMutation(createChatSession);
-  const sendMessageMut = useMutation(sendMessage);
+  const createSessionMut = useMutation("functions/createChatSession:createChatSession" as any);
+  const sendMessageMut = useMutation("functions/sendMessage:sendMessage" as any);
 
   React.useEffect(() => {
     if (!sessionId && initialSessionId) setSessionId(initialSessionId);

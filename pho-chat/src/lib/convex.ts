@@ -1,6 +1,6 @@
 "use client";
 
-import { ConvexReactClient } from "convex/_generated/react";
+import { ConvexReactClient } from "convex/react";
 
 export const convex = new ConvexReactClient(
   // Will be inlined by Next for client components
