@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
+import { getAIBaseURL, getAIKey } from "@/lib/aiConfig";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const AI_BASE =
-  process.env.AI_GATEWAY_BASE_URL ||
-  process.env.NEXT_PUBLIC_AI_GATEWAY_BASE_URL ||
-  "https://ai-gateway.vercel.sh/v1";
-const AI_KEY = process.env.AI_GATEWAY_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_KEY;
+const AI_BASE = getAIBaseURL()!; // aiConfig ensures canonical form (no provider suffix)
+const AI_KEY = getAIKey();
 
 function redact(token?: string | null) {
   if (!token) return null;
@@ -62,4 +60,3 @@ export async function GET() {
 
   return NextResponse.json(payload);
 }
-
