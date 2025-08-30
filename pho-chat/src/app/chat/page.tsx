@@ -1,0 +1,373 @@
+"use client";
+
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+
+import { useToast } from "@/components/ui/toast";
+
+import * as React from "react";
+import { useSearchParams } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
+
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+
+// Temporary fallback imports until codegen completes
+import { useQuery, useMutation } from "convex/react";
+
+// Types (lightweight)
+type ChatMessage = { id: string; role: string; content: string; createdAt: number };
+
+const MODELS = [
+  { id: "gpt-4o-mini", label: "GPT-4o mini" },
+  { id: "gpt-4o", label: "GPT-4o" },
+  { id: "o3-mini", label: "o3-mini" },
+];
+
+function SessionMessages({ sessionId }: { sessionId: string | null }) {
+  const session = useQuery(
+    "functions/getChatSession:getChatSession" as any,
+    (sessionId ? { sessionId } : "skip") as any
+  );
+  const loading = sessionId && !session;
+  const messages: ChatMessage[] = (session as any)?.messages ?? [];
+  if (!sessionId) return null;
+  return (
+    <>
+      {loading && (
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-3/5" />
+        </div>
+      )}
+      {!loading && messages.length === 0 && (
+        <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
+      )}
+      {!loading && messages.map((m) => (
+        <div key={m.id} className="text-sm">
+          <span className="font-medium mr-2">{m.role}:</span>
+          <span className="whitespace-pre-wrap">{m.content}</span>
+        </div>
+      ))}
+    </>
+  );
+}
+
+
+function ChatPageInner() {
+  const params = useSearchParams();
+  const initialSessionId = params ? params.get("sessionId") : null;
+
+  const [sessionId, setSessionId] = React.useState<string | null>(initialSessionId);
+  const [model, setModel] = React.useState<string>(MODELS[0].id);
+  const [input, setInput] = React.useState<string>("");
+  const [streamingText, setStreamingText] = React.useState<string>("");
+  const [sending, setSending] = React.useState<boolean>(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const { success } = useToast();
+
+  // New session form state
+  const [newUserId, setNewUserId] = React.useState<string>("");
+  const [creating, setCreating] = React.useState<boolean>(false);
+
+  const [copied, setCopied] = React.useState(false);
+
+
+  // Guard to prevent rapid double-submits
+  const sendGuardRef = React.useRef(false);
+
+
+  // Refs for UX
+  const scrollRef = React.useRef<HTMLDivElement | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const abortRef = React.useRef<AbortController | null>(null);
+
+  // Autofocus on mount and after sends
+  React.useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  // Auto-scroll when streaming or sending changes (only if user is near bottom)
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80; // px
+    if (nearBottom) el.scrollTop = el.scrollHeight;
+  }, [streamingText, sending, sessionId]);
+
+  // Persist input per session
+  React.useEffect(() => {
+    const key = `chat.input.${sessionId || "no-session"}`;
+    const saved = typeof window !== "undefined" ? localStorage.getItem(key) : null;
+    if (saved != null) setInput(saved);
+  }, [sessionId]);
+  React.useEffect(() => {
+    const key = `chat.input.${sessionId || "no-session"}`;
+    try { localStorage.setItem(key, input); } catch {}
+  }, [input, sessionId]);
+
+  function handleNewChat() {
+    setSessionId(null);
+    setStreamingText("");
+    setInput("");
+    setError(null);
+    try { localStorage.removeItem(`chat.input.no-session`); } catch {}
+    textareaRef.current?.focus();
+  }
+
+  function handleStop() {
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+  }
+
+
+  // Mutations
+  const createSessionMut = useMutation("functions/createChatSession:createChatSession" as any);
+  const sendMessageMut = useMutation("functions/sendMessage:sendMessage" as any);
+
+  React.useEffect(() => {
+    if (!sessionId && initialSessionId) setSessionId(initialSessionId);
+  }, [initialSessionId, sessionId]);
+
+  async function handleCreateSession() {
+    console.log("[Chat] New Session clicked", { newUserId, model });
+    if (!newUserId.trim()) {
+      console.log("[Chat] Aborting: empty userId");
+      return;
+    }
+    try {
+      setCreating(true);
+      setError(null);
+      const id = await createSessionMut({ userId: newUserId.trim(), model });
+      console.log("[Chat] createChatSession result", id);
+      setSessionId(String(id));
+    } catch (e: any) {
+      console.error("[Chat] createChatSession failed", e);
+      setError(e.message || String(e));
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleSend() {
+    console.log("[Chat] Send clicked", { sessionId, inputLength: input.length, model });
+    if (!input.trim()) {
+      console.log("[Chat] Aborting send: empty input");
+      return;
+    }
+    try {
+      if (sendGuardRef.current) {
+        console.log("[Chat] Guard: send in progress");
+        return;
+      }
+      sendGuardRef.current = true;
+      setError(null);
+      setSending(true);
+      setStreamingText("");
+
+      // Auto-create a session if missing (fallback for easier testing)
+      let sid = sessionId;
+      if (!sid) {
+        try {
+          const id = await createSessionMut({ userId: `guest-${Date.now()}`, model });
+          console.log("[Chat] Auto-created session", id);
+          sid = String(id);
+          setSessionId(sid);
+        } catch (e: any) {
+          console.error("[Chat] auto create session failed", e);
+          setError(e.message || String(e));
+          return;
+        }
+      }
+
+      const userMessage = {
+        id: String(Date.now()),
+        role: "user",
+        content: input,
+        createdAt: Date.now(),
+      };
+      console.log("[Chat] sendMessage user", userMessage);
+      await sendMessageMut({ sessionId: sid as any, message: userMessage as any });
+
+      // Stream AI response
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      const res = await fetch("/api/ai/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model, prompt: input }),
+        signal: ac.signal,
+      });
+      // Stop button UI is enabled while streaming
+
+      if (!res.ok || !res.body) {
+        const text = await res.text();
+        throw new Error(text || "AI stream failed");
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let acc = "";
+      while (!done) {
+        const { value, done: d } = await reader.read();
+        done = d;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          acc += chunk;
+          setStreamingText(acc);
+        }
+      }
+      abortRef.current = null;
+
+      // If stream completed with no chunks, fetch full text once
+      if (!acc) {
+        try {
+          const full = await fetch("/api/ai/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, prompt: input }) }).then(r => r.json());
+          const text = full?.data?.choices?.[0]?.message?.content ?? "";
+          if (text) setStreamingText(text);
+          acc = text || acc;
+        } catch {}
+      }
+
+      const assistantMessage = {
+        id: `${Date.now()}-a`,
+        role: "assistant",
+        content: acc,
+        createdAt: Date.now(),
+      };
+      console.log("[Chat] sendMessage assistant", { length: acc.length });
+      await sendMessageMut({ sessionId: sessionId as any, message: assistantMessage as any });
+      setInput("");
+      setStreamingText(""); // clear placeholder to avoid duplicate visual message
+    } catch (e: any) {
+      console.error("[Chat] send flow failed", e);
+      setError(e.message || String(e));
+    } finally {
+      setSending(false);
+      sendGuardRef.current = false;
+    }
+  }
+
+  return (
+    <div className="mx-auto my-6 max-w-3xl">
+      <Card className="p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm text-muted-foreground">
+            Tier: <span className="font-medium">free</span>{" "}
+            {sessionId ? (
+              <span className="ml-2">Session: {sessionId}</span>
+            ) : (
+              <span className="ml-2">No session loaded</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={model} onValueChange={setModel}>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Model" /></SelectTrigger>
+              <SelectContent>
+                {MODELS.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* New Session Flow */}
+        <div className="rounded-md border p-3 space-y-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Input placeholder="userId" value={newUserId} onChange={(e) => setNewUserId(e.target.value)} />
+            <Input placeholder="model" value={model} onChange={(e) => setModel(e.target.value)} />
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleCreateSession} disabled={creating || !newUserId.trim()}>
+              {creating ? "Creating…" : "New Session"}
+            </Button>
+          </div>
+        </div>
+
+        <div ref={scrollRef} className="h-[55vh] overflow-y-auto rounded-md border p-3 space-y-3 bg-background">
+          <SessionMessages sessionId={sessionId} />
+          {streamingText && (
+            <div className="text-sm">
+              <span className="font-medium mr-2">assistant:</span>
+              <span className="whitespace-pre-wrap">{streamingText}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {/* Shortcut tooltip on focus/hover */}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                // Ctrl/Cmd + Enter => explicit newline
+                e.preventDefault();
+                setInput((prev) => `${prev}\n`);
+                return;
+              }
+              if (e.key === "Enter" && e.shiftKey) {
+                // Shift+Enter is disabled (no newline, no send)
+                e.preventDefault();
+                return;
+              }
+              if (e.key === "Enter") {
+                // Plain Enter => send
+                e.preventDefault();
+                if (!sending && !sendGuardRef.current && input.trim()) {
+                  handleSend();
+                }
+              }
+            }}
+            placeholder="Type your message..."
+            className="min-h-[100px]"
+          />
+              </TooltipTrigger>
+              <TooltipContent sideOffset={6}>Enter to send • Ctrl/Cmd+Enter newline</TooltipContent>
+            </Tooltip>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={async () => { await navigator.clipboard.writeText(streamingText); setCopied(true); success("Copied"); setTimeout(()=>setCopied(false), 1200); }} disabled={!streamingText}>
+                {copied ? "Copied!" : "Copy last reply"}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={handleNewChat}>
+                New chat
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span>Enter to send • Ctrl/Cmd+Enter newline</span>
+              <Button size="sm" variant="destructive" onClick={handleStop} disabled={!sending}>
+                Stop
+              </Button>
+              <Button onClick={handleSend} disabled={sending || sendGuardRef.current || !input.trim()}>
+                {sending ? "Sending..." : sendGuardRef.current ? "Sending..." : "Send"}
+              </Button>
+            </div>
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <React.Suspense fallback={<div />}>
+      <ChatPageInner />
+    </React.Suspense>
+  );
+}
+
