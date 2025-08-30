@@ -58,6 +58,10 @@ function ChatPageInner() {
   const [newUserId, setNewUserId] = React.useState<string>("");
   const [creating, setCreating] = React.useState<boolean>(false);
 
+
+  // Guard to prevent rapid double-submits
+  const sendGuardRef = React.useRef(false);
+
   // Mutations
   const createSessionMut = useMutation("functions/createChatSession:createChatSession" as any);
   const sendMessageMut = useMutation("functions/sendMessage:sendMessage" as any);
@@ -93,6 +97,11 @@ function ChatPageInner() {
       return;
     }
     try {
+      if (sendGuardRef.current) {
+        console.log("[Chat] Guard: send in progress");
+        return;
+      }
+      sendGuardRef.current = true;
       setError(null);
       setSending(true);
       setStreamingText("");
@@ -160,6 +169,7 @@ function ChatPageInner() {
       setError(e.message || String(e));
     } finally {
       setSending(false);
+      sendGuardRef.current = false;
     }
   }
 
@@ -218,8 +228,8 @@ function ChatPageInner() {
             className="min-h-[100px]"
           />
           <div className="flex justify-end">
-            <Button onClick={handleSend} disabled={sending || !input.trim() || !sessionId}>
-              {sending ? "Sending..." : "Send"}
+            <Button onClick={handleSend} disabled={sending || sendGuardRef.current || !input.trim() }>
+              {sending ? "Sending..." : sendGuardRef.current ? "Sending..." : "Send"}
             </Button>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
