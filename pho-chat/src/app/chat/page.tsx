@@ -62,6 +62,33 @@ function ChatPageInner() {
   // Guard to prevent rapid double-submits
   const sendGuardRef = React.useRef(false);
 
+
+  // Refs for UX
+  const scrollRef = React.useRef<HTMLDivElement | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+
+  // Autofocus on mount and after sends
+  React.useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  // Auto-scroll when streaming or sending changes
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [streamingText, sending, sessionId]);
+
+  // Persist input per session
+  React.useEffect(() => {
+    const key = `chat.input.${sessionId || "no-session"}`;
+    const saved = typeof window !== "undefined" ? localStorage.getItem(key) : null;
+    if (saved != null) setInput(saved);
+  }, [sessionId]);
+  React.useEffect(() => {
+    const key = `chat.input.${sessionId || "no-session"}`;
+    try { localStorage.setItem(key, input); } catch {}
+  }, [input, sessionId]);
+
   // Mutations
   const createSessionMut = useMutation("functions/createChatSession:createChatSession" as any);
   const sendMessageMut = useMutation("functions/sendMessage:sendMessage" as any);
@@ -210,7 +237,7 @@ function ChatPageInner() {
           </div>
         </div>
 
-        <div className="h-[55vh] overflow-y-auto rounded-md border p-3 space-y-3 bg-background">
+        <div ref={scrollRef} className="h-[55vh] overflow-y-auto rounded-md border p-3 space-y-3 bg-background">
           <SessionMessages sessionId={sessionId} />
           {streamingText && (
             <div className="text-sm">
@@ -222,6 +249,7 @@ function ChatPageInner() {
 
         <div className="space-y-2">
           <Textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
