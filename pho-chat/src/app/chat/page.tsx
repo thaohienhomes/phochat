@@ -43,7 +43,7 @@ function SessionMessages({ sessionId }: { sessionId: string | null }) {
 }
 
 
-export default function ChatPage() {
+function ChatPageInner() {
   const params = useSearchParams();
   const initialSessionId = params.get("sessionId");
 
@@ -210,6 +210,14 @@ export default function ChatPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <React.Suspense fallback={<div />}>
+      <ChatPageInner />
+    </React.Suspense>
   );
 }
 

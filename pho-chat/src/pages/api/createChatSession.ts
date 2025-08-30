@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { run } from "convex/next";
+import { run } from "convex/nextjs";
 import { createChatSession } from "../../../convex/functions/createChatSession";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

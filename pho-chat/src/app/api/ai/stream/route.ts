@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { streamText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 
-export const runtime = "edge";
+export const dynamic = "force-dynamic"; // ensure streaming works in dev/prod
 
 const apiKey = process.env.AI_GATEWAY_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_KEY;
 const baseURL = process.env.AI_GATEWAY_BASE_URL || process.env.NEXT_PUBLIC_AI_GATEWAY_BASE_URL;
@@ -35,8 +35,8 @@ export async function POST(req: Request) {
 
     const result = await streamText({ model: openai(model), prompt });
 
-    // @ts-ignore - the AI SDK returns a Response-compatible stream
-    return result.toAIStreamResponse();
+    // Stream plain text chunks; ignore non-text events
+    return result.toTextStreamResponse();
   } catch (err: any) {
     // Surface richer error info during dev
     const message = err?.message || String(err);
