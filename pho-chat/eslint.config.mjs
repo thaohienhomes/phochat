@@ -20,7 +20,17 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // Ignore generated Convex code
+      "convex/_generated/**",
+      "convex/functions/_generated/**",
     ],
+  },
+  // Project rules
+  {
+    rules: {
+      // Allow usage of any in early iterations and in Convex functions
+      "@typescript-eslint/no-explicit-any": "off",
+    },
   },
   // Ensure Prettier formatting takes precedence (must be last)
   ...compat.extends("prettier"),

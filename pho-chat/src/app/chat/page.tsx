@@ -45,7 +45,7 @@ function SessionMessages({ sessionId }: { sessionId: string | null }) {
 
 function ChatPageInner() {
   const params = useSearchParams();
-  const initialSessionId = params.get("sessionId");
+  const initialSessionId = params ? params.get("sessionId") : null;
 
   const [sessionId, setSessionId] = React.useState<string | null>(initialSessionId);
   const [model, setModel] = React.useState<string>(MODELS[0].id);
