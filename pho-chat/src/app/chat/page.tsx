@@ -154,6 +154,7 @@ function ChatPageInner() {
       console.log("[Chat] sendMessage assistant", { length: acc.length });
       await sendMessageMut({ sessionId: sessionId as any, message: assistantMessage as any });
       setInput("");
+      setStreamingText(""); // clear placeholder to avoid duplicate visual message
     } catch (e: any) {
       console.error("[Chat] send flow failed", e);
       setError(e.message || String(e));
