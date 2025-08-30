@@ -2,8 +2,12 @@
 
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
+import { useToast } from "@/components/ui/toast";
+
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,14 +31,22 @@ function SessionMessages({ sessionId }: { sessionId: string | null }) {
     "functions/getChatSession:getChatSession" as any,
     (sessionId ? { sessionId } : "skip") as any
   );
+  const loading = sessionId && !session;
   const messages: ChatMessage[] = (session as any)?.messages ?? [];
   if (!sessionId) return null;
   return (
     <>
-      {messages.length === 0 && (
+      {loading && (
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-3/5" />
+        </div>
+      )}
+      {!loading && messages.length === 0 && (
         <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
       )}
-      {messages.map((m) => (
+      {!loading && messages.map((m) => (
         <div key={m.id} className="text-sm">
           <span className="font-medium mr-2">{m.role}:</span>
           <span className="whitespace-pre-wrap">{m.content}</span>
@@ -55,6 +67,8 @@ function ChatPageInner() {
   const [streamingText, setStreamingText] = React.useState<string>("");
   const [sending, setSending] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const { success } = useToast();
 
   // New session form state
   const [newUserId, setNewUserId] = React.useState<string>("");
@@ -325,7 +339,7 @@ function ChatPageInner() {
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={async () => { await navigator.clipboard.writeText(streamingText); setCopied(true); setTimeout(()=>setCopied(false), 1200); }} disabled={!streamingText}>
+              <Button size="sm" variant="outline" onClick={async () => { await navigator.clipboard.writeText(streamingText); setCopied(true); success("Copied"); setTimeout(()=>setCopied(false), 1200); }} disabled={!streamingText}>
                 {copied ? "Copied!" : "Copy last reply"}
               </Button>
               <Button size="sm" variant="secondary" onClick={handleNewChat}>

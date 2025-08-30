@@ -4,6 +4,7 @@ import './globals.css';
 
 // Example shadcn/ui providers imported for ease of use across the app
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ToastProvider } from '@/components/ui/toast';
 import { ConvexProviderClient } from '@/components/providers/convex-provider';
 
 
@@ -33,7 +34,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ConvexProviderClient>
-          <TooltipProvider>{children}</TooltipProvider>
+          <ToastProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </ToastProvider>
         </ConvexProviderClient>
       </body>
     </html>
