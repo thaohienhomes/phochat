@@ -46,3 +46,8 @@ To learn more about Next.js, take a look at the following resources:
 ## Deploy on Vercel
 
 See [Next.js deployment docs](https://nextjs.org/docs/app/building-your-application/deploying) and ensure environment variables are set in Vercel.
+
+
+## Deployment trigger note
+
+This change is a no-op edit to trigger a production deployment on Vercel.
