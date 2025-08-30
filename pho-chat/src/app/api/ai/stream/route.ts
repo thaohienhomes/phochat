@@ -8,8 +8,8 @@ export const runtime = "nodejs"; // ensure Node runtime for streaming
 const apiKey = process.env.AI_GATEWAY_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_KEY;
 const baseURL = process.env.AI_GATEWAY_BASE_URL || process.env.NEXT_PUBLIC_AI_GATEWAY_BASE_URL;
 
-// Use 'compatible' to hit /chat/completions for OpenAI-compatible gateways
-const openai = createOpenAI({ apiKey, baseURL, compatibility: "compatible" });
+// OpenAI provider (Chat Completions)
+const openai = createOpenAI({ apiKey, baseURL });
 
 function json(status: number, data: any) {
   return NextResponse.json(data, { status });
