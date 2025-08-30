@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createOpenAI } from "@ai-sdk/openai";
 import { getAIBaseURL, getAIKey } from "@/lib/aiConfig";
 
 export const runtime = "nodejs";
@@ -7,8 +6,6 @@ export const dynamic = "force-dynamic";
 
 const apiKey = getAIKey();
 const baseURL = getAIBaseURL();
-
-const openai = createOpenAI({ apiKey, baseURL });
 
 export async function GET() {
   try {
