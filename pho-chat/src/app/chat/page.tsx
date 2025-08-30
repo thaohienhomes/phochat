@@ -66,16 +66,19 @@ function ChatPageInner() {
   // Refs for UX
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const abortRef = React.useRef<AbortController | null>(null);
 
   // Autofocus on mount and after sends
   React.useEffect(() => {
     textareaRef.current?.focus();
   }, []);
 
-  // Auto-scroll when streaming or sending changes
+  // Auto-scroll when streaming or sending changes (only if user is near bottom)
   React.useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80; // px
+    if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [streamingText, sending, sessionId]);
 
   // Persist input per session
@@ -88,6 +91,22 @@ function ChatPageInner() {
     const key = `chat.input.${sessionId || "no-session"}`;
     try { localStorage.setItem(key, input); } catch {}
   }, [input, sessionId]);
+
+  function handleNewChat() {
+    setSessionId(null);
+    setStreamingText("");
+    setInput("");
+    setError(null);
+    try { localStorage.removeItem(`chat.input.no-session`); } catch {}
+    textareaRef.current?.focus();
+  }
+
+  function handleStop() {
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+  }
+
 
   // Mutations
   const createSessionMut = useMutation("functions/createChatSession:createChatSession" as any);
@@ -158,11 +177,17 @@ function ChatPageInner() {
       await sendMessageMut({ sessionId: sid as any, message: userMessage as any });
 
       // Stream AI response
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
       const res = await fetch("/api/ai/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model, prompt: input }),
+        signal: ac.signal,
       });
+      // Stop button UI is enabled while streaming
+
       if (!res.ok || !res.body) {
         const text = await res.text();
         throw new Error(text || "AI stream failed");
@@ -180,11 +205,25 @@ function ChatPageInner() {
           setStreamingText(acc);
         }
       }
+      abortRef.current = null;
+
+      // If stream completed with no chunks, fetch full text once
+      if (!acc) {
+        try {
+          const full = await fetch("/api/ai/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, prompt: input }) }).then(r => r.json());
+          const text = full?.data?.choices?.[0]?.message?.content ?? "";
+          if (text) setStreamingText(text);
+          acc = text || acc;
+        } catch {}
+      }
 
       const assistantMessage = {
         id: `${Date.now()}-a`,
         role: "assistant",
         content: acc,
+      // Copy-to-clipboard helper for quick copy of last response
+      const copyText = acc;
+
         createdAt: Date.now(),
       };
       console.log("[Chat] sendMessage assistant", { length: acc.length });
@@ -268,6 +307,32 @@ function ChatPageInner() {
                 // Plain Enter => send
                 e.preventDefault();
                 if (!sending && !sendGuardRef.current && input.trim()) {
+                  handleSend();
+                }
+              }
+            }}
+            placeholder="Type your message..."
+            className="min-h-[100px]"
+          />
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(streamingText)} disabled={!streamingText}>
+                Copy last reply
+              </Button>
+              <Button size="sm" variant="secondary" onClick={handleNewChat}>
+                New chat
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span>Enter to send • Ctrl/Cmd+Enter newline</span>
+              <Button size="sm" variant="destructive" onClick={handleStop} disabled={!sending}>
+                Stop
+              </Button>
+              <Button onClick={handleSend} disabled={sending || sendGuardRef.current || !input.trim()}>
+                {sending ? "Sending..." : sendGuardRef.current ? "Sending..." : "Send"}
+              </Button>
+            </div>
+          </div>
                   handleSend();
                 }
               }
