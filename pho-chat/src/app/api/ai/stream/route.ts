@@ -35,7 +35,8 @@ export async function POST(req: Request) {
       });
     }
 
-    const result = await streamText({ model: openai(model), prompt });
+    console.log("[AI] streamText", { model, using: "chat.completions", baseURL });
+    const result = await streamText({ model: openai.chat(model), prompt });
 
     // Stream plain text chunks; ignore non-text events
     return result.toTextStreamResponse();
