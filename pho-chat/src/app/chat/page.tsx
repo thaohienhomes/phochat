@@ -225,7 +225,19 @@ function ChatPageInner() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                // Ctrl/Cmd + Enter => explicit newline
+                e.preventDefault();
+                setInput((prev) => `${prev}\n`);
+                return;
+              }
+              if (e.key === "Enter" && e.shiftKey) {
+                // Shift+Enter is disabled (no newline, no send)
+                e.preventDefault();
+                return;
+              }
+              if (e.key === "Enter") {
+                // Plain Enter => send
                 e.preventDefault();
                 if (!sending && !sendGuardRef.current && input.trim()) {
                   handleSend();
