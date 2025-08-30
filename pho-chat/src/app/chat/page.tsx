@@ -88,14 +88,29 @@ function ChatPageInner() {
 
   async function handleSend() {
     console.log("[Chat] Send clicked", { sessionId, inputLength: input.length, model });
-    if (!sessionId || !input.trim()) {
-      console.log("[Chat] Aborting send: missing sessionId or empty input");
+    if (!input.trim()) {
+      console.log("[Chat] Aborting send: empty input");
       return;
     }
     try {
       setError(null);
       setSending(true);
       setStreamingText("");
+
+      // Auto-create a session if missing (fallback for easier testing)
+      let sid = sessionId;
+      if (!sid) {
+        try {
+          const id = await createSessionMut({ userId: `guest-${Date.now()}`, model });
+          console.log("[Chat] Auto-created session", id);
+          sid = String(id);
+          setSessionId(sid);
+        } catch (e: any) {
+          console.error("[Chat] auto create session failed", e);
+          setError(e.message || String(e));
+          return;
+        }
+      }
 
       const userMessage = {
         id: String(Date.now()),
@@ -104,7 +119,7 @@ function ChatPageInner() {
         createdAt: Date.now(),
       };
       console.log("[Chat] sendMessage user", userMessage);
-      await sendMessageMut({ sessionId: sessionId as any, message: userMessage as any });
+      await sendMessageMut({ sessionId: sid as any, message: userMessage as any });
 
       // Stream AI response
       const res = await fetch("/api/ai/stream", {
