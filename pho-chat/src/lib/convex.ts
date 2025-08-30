@@ -2,28 +2,30 @@
 
 import { ConvexReactClient } from "convex/react";
 
-// Resolve Convex deployment URL at build time (NEXT_PUBLIC_ vars are inlined by Next)
-const INLINE_URL = process.env.NEXT_PUBLIC_CONVEX_URL as string | undefined;
+// Lazily construct Convex client only on the client with a valid absolute URL
+export function getConvexClient(): ConvexReactClient | null {
+  if (typeof window === "undefined") return null;
 
-// In dev without env, fall back to local Convex dev server; in prod, require INLINE_URL
-const fallbackDevUrl = typeof window !== "undefined" && window.location.hostname === "localhost"
-  ? "http://127.0.0.1:3210"
-  : undefined;
+  const INLINE_URL = process.env.NEXT_PUBLIC_CONVEX_URL as string | undefined;
+  const fallbackDevUrl = window.location.hostname === "localhost" ? "http://127.0.0.1:3210" : undefined;
+  const resolvedUrl = INLINE_URL ?? fallbackDevUrl;
 
-const resolvedUrl = INLINE_URL ?? fallbackDevUrl;
-
-if (typeof window !== "undefined") {
-  if (!INLINE_URL) {
-    // Helpful hint in browser console if env not set
+  if (!resolvedUrl) {
     console.warn(
-      "[Convex] NEXT_PUBLIC_CONVEX_URL is not set. Using",
-      resolvedUrl ?? "undefined",
-      "— set NEXT_PUBLIC_CONVEX_URL to your https://<deployment>.convex.cloud"
+      "[Convex] NEXT_PUBLIC_CONVEX_URL is not set and no local fallback is available. Convex disabled."
     );
-  } else {
-    console.log("[Convex] Using deployment:", INLINE_URL);
+    return null;
   }
-}
 
-export const convex = new ConvexReactClient(resolvedUrl ?? "");
+  try {
+    // Ensure absolute URL; ConvexReactClient will validate internally as well
+    new URL(resolvedUrl);
+  } catch {
+    console.error("[Convex] Provided URL is not absolute:", resolvedUrl);
+    return null;
+  }
+
+  console.log("[Convex] Using deployment:", resolvedUrl);
+  return new ConvexReactClient(resolvedUrl);
+}
 
