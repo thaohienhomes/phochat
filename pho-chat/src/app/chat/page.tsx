@@ -224,6 +224,14 @@ function ChatPageInner() {
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!sending && !sendGuardRef.current && input.trim()) {
+                  handleSend();
+                }
+              }
+            }}
             placeholder="Type your message..."
             className="min-h-[100px]"
           />
