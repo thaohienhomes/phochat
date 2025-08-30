@@ -1,5 +1,7 @@
 "use client";
 
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -57,6 +59,8 @@ function ChatPageInner() {
   // New session form state
   const [newUserId, setNewUserId] = React.useState<string>("");
   const [creating, setCreating] = React.useState<boolean>(false);
+
+  const [copied, setCopied] = React.useState(false);
 
 
   // Guard to prevent rapid double-submits
@@ -221,9 +225,6 @@ function ChatPageInner() {
         id: `${Date.now()}-a`,
         role: "assistant",
         content: acc,
-      // Copy-to-clipboard helper for quick copy of last response
-      const copyText = acc;
-
         createdAt: Date.now(),
       };
       console.log("[Chat] sendMessage assistant", { length: acc.length });
@@ -287,11 +288,15 @@ function ChatPageInner() {
         </div>
 
         <div className="space-y-2">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
+          {/* Shortcut tooltip on focus/hover */}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
               if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                 // Ctrl/Cmd + Enter => explicit newline
                 e.preventDefault();
@@ -314,10 +319,14 @@ function ChatPageInner() {
             placeholder="Type your message..."
             className="min-h-[100px]"
           />
+              </TooltipTrigger>
+              <TooltipContent sideOffset={6}>Enter to send • Ctrl/Cmd+Enter newline</TooltipContent>
+            </Tooltip>
+
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(streamingText)} disabled={!streamingText}>
-                Copy last reply
+              <Button size="sm" variant="outline" onClick={async () => { await navigator.clipboard.writeText(streamingText); setCopied(true); setTimeout(()=>setCopied(false), 1200); }} disabled={!streamingText}>
+                {copied ? "Copied!" : "Copy last reply"}
               </Button>
               <Button size="sm" variant="secondary" onClick={handleNewChat}>
                 New chat
