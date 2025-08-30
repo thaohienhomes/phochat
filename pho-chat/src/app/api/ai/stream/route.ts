@@ -3,11 +3,13 @@ import { streamText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 
 export const dynamic = "force-dynamic"; // ensure streaming works in dev/prod
+export const runtime = "nodejs"; // ensure Node runtime for streaming
 
 const apiKey = process.env.AI_GATEWAY_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_KEY;
 const baseURL = process.env.AI_GATEWAY_BASE_URL || process.env.NEXT_PUBLIC_AI_GATEWAY_BASE_URL;
 
-const openai = createOpenAI({ apiKey, baseURL });
+// Use 'compatible' to hit /chat/completions for OpenAI-compatible gateways
+const openai = createOpenAI({ apiKey, baseURL, compatibility: "compatible" });
 
 function json(status: number, data: any) {
   return NextResponse.json(data, { status });
