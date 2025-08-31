@@ -5,6 +5,7 @@ on:
     branches:
       - chore/next15-setup
       - chore/trigger-prod-deploy
+      - main
   # Manual trigger
   workflow_dispatch:
     inputs:
