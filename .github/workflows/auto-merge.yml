@@ -1,0 +1,32 @@
+name: Enable Auto-Merge
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to enable auto-merge for
+        required: true
+        type: number
+      merge_method:
+        description: merge method (merge, squash, rebase)
+        required: false
+        default: squash
+        type: choice
+        options: [merge, squash, rebase]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge for PR
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ inputs.pr_number }}
+          merge-method: ${{ inputs.merge_method }}
+          # If repo doesn't have Auto-merge enabled, this step will fail clearly
+
