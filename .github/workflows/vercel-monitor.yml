@@ -1,6 +1,10 @@
 name: Vercel Deploy Monitor and Endpoint Validator
 
 on:
+  push:
+    branches:
+      - chore/next15-setup
+      - chore/trigger-prod-deploy
   # Manual trigger
   workflow_dispatch:
     inputs:
