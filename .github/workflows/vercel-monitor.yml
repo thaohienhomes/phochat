@@ -89,10 +89,19 @@ jobs:
           echo "- Ready URL:  ${BASE}"
           echo "- Deploy ID:  ${DEPLOYMENT_ID:-unknown}"
 
-          # Pull the deployment details to confirm commit & branch
+          # Verify project configuration (framework, rootDirectory, build/output commands)
+          echo "Project details:"
+          curl -fsS "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" | jq '{name, framework, rootDirectory, buildCommand, outputDirectory}' || true
+
+
+          # Pull the deployment details to confirm commit & branch and list functions
           if [[ -n "${DEPLOYMENT_ID:-}" ]]; then
             curl -fsS "https://api.vercel.com/v13/deployments/${DEPLOYMENT_ID}" \
-              -H "Authorization: Bearer ${VERCEL_TOKEN}" | jq '{id: .uid, url, state, meta: {githubCommitRef: .meta.githubCommitRef, githubCommitSha: .meta.githubCommitSha}}'
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" | jq '{id: .uid, url, state, meta: {githubCommitRef: .meta.githubCommitRef, githubCommitSha: .meta.githubCommitSha}}' || true
+            echo "Functions (top-level):"
+            curl -fsS "https://api.vercel.com/v13/deployments/${DEPLOYMENT_ID}/files?path=functions&limit=100" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" | jq '.files | (.[0:10] // []) | map({name: .name, type: .type})' || true
           fi
 
           # Hit root path to see what is served
@@ -116,7 +125,6 @@ jobs:
         env:
           BASE: ${{ steps.wait.outputs.ready_url }}
           VERCEL_PROTECTION_BYPASS_TOKEN: ${{ secrets.VERCEL_PROTECTION_BYPASS_TOKEN }}
-          VERCEL_BYPASS_TOKEN: ${{ secrets.VERCEL_BYPASS_TOKEN }}
         run: |
           set -euo pipefail
           echo "Checking endpoints on $BASE"
