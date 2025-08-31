@@ -68,6 +68,8 @@ jobs:
 
           if [[ -z "${URL:-}" || "$STATE" != "READY" ]]; then
             echo "Timed out waiting for deployment to be READY"
+            exit 1
+          fi
 
       - name: Diagnostics (project/org/commit and root path)
         shell: bash
@@ -108,9 +110,6 @@ jobs:
           echo "Probing root: $URL_WITH_QP"
           status=$(curl -sS -o /dev/null -w "%{http_code}" -L "${EXTRA_OPTS[@]}" "$URL_WITH_QP" || echo 000)
           echo "GET / => $status"
-
-            exit 1
-          fi
 
       - name: Validate API endpoints
         shell: bash
