@@ -1,0 +1,95 @@
+name: Vercel Deploy Monitor and Endpoint Validator
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to monitor (defaults to current ref name)"
+        required: false
+        default: ""
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: ${{ inputs.branch || github.ref_name }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure jq is available
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y jq
+          fi
+
+      - name: Wait for latest Vercel deployment for branch to be READY
+        id: wait
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Monitoring branch: $BRANCH"
+          if [[ -z "${VERCEL_TOKEN:-}" || -z "${VERCEL_PROJECT_ID:-}" ]]; then
+            echo "Missing Vercel secrets. Please set VERCEL_TOKEN and VERCEL_PROJECT_ID (and optionally VERCEL_ORG_ID)."
+            exit 1
+          fi
+
+          # Poll deployments until a READY one is found for the branch
+          # Uses the metadata 'githubCommitRef' which Vercel sets for GitHub-linked projects
+          for i in {1..60}; do
+            RESP=$(curl -fsS "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&limit=1&meta-githubCommitRef=$BRANCH" \
+              -H "Authorization: Bearer $VERCEL_TOKEN")
+            ID=$(echo "$RESP" | jq -r '.deployments[0].uid // empty')
+            URL=$(echo "$RESP" | jq -r '.deployments[0].url // empty')
+            STATE=$(echo "$RESP" | jq -r '.deployments[0].state // empty')
+            echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") id=$ID state=$STATE url=$URL"
+
+            if [[ "$STATE" == "READY" && -n "$URL" ]]; then
+              echo "ready_url=https://$URL" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            if [[ "$STATE" == "ERROR" || "$STATE" == "CANCELED" ]]; then
+              echo "Deployment failed with state: $STATE"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          if [[ -z "${URL:-}" || "$STATE" != "READY" ]]; then
+            echo "Timed out waiting for deployment to be READY"
+            exit 1
+          fi
+
+      - name: Validate API endpoints
+        shell: bash
+        env:
+          BASE: ${{ steps.wait.outputs.ready_url }}
+        run: |
+          set -euo pipefail
+          echo "Checking endpoints on $BASE"
+          function check() {
+            local method=$1 path=$2 expect=$3
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$BASE$path")
+            echo "$method $path => $code (expected $expect)"
+            if [[ "$code" != "$expect" ]]; then
+              echo "::error::Expected $expect but got $code for $method $path"
+              exit 1
+            fi
+          }
+          # Health endpoint
+          check HEAD /api/health 200
+          check GET  /api/health 200
+          # AI test endpoint
+          check HEAD /api/ai/test 200
+          check GET  /api/ai/test 200
+
+      - name: Summary
+        shell: bash
+        env:
+          BASE: ${{ steps.wait.outputs.ready_url }}
+        run: echo "All endpoint checks passed on $BASE"

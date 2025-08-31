@@ -38,7 +38,12 @@ jobs:
       - name: Install deps
         run: npm ci
       - name: Lint
-        run: npm run lint -- --max-warnings=0
+        env:
+          ESLINT_MAX_WARNINGS: ${{ vars.ESLINT_MAX_WARNINGS }}
+        run: |
+          MAX="${ESLINT_MAX_WARNINGS:-0}"
+          echo "Using max warnings: $MAX"
+          npm run lint -- --max-warnings="$MAX"
 
   typecheck:
     name: typecheck

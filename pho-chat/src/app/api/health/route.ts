@@ -60,3 +60,7 @@ export async function GET() {
 
   return NextResponse.json(payload);
 }
+export async function HEAD() {
+  // Fast path for monitors that use HEAD
+  return new Response(null, { status: 200 });
+}

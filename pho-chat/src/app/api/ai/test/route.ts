@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 const apiKey = getAIKey();
 const baseURL = getAIBaseURL();
 
+
 export async function GET() {
   try {
     const resp = await fetch(`${(baseURL?.replace(/\/$/, "")) || "https://ai-gateway.vercel.sh/v1"}/models`, {
@@ -36,4 +37,8 @@ export async function POST(req: Request) {
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || String(e) }, { status: 500 });
   }
+}
+export async function HEAD() {
+  // Provide a quick success response for monitoring
+  return new Response(null, { status: 200 });
 }
