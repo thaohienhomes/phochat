@@ -74,17 +74,27 @@ jobs:
         shell: bash
         env:
           BASE: ${{ steps.wait.outputs.ready_url }}
+          VERCEL_PROTECTION_BYPASS_TOKEN: ${{ secrets.VERCEL_PROTECTION_BYPASS_TOKEN }}
+          VERCEL_BYPASS_TOKEN: ${{ secrets.VERCEL_BYPASS_TOKEN }}
         run: |
           set -euo pipefail
           echo "Checking endpoints on $BASE"
           fail=0
+          # Build optional headers for protected preview deployments
+          TOKEN="${VERCEL_PROTECTION_BYPASS_TOKEN:-${VERCEL_BYPASS_TOKEN:-}}"
+          EXTRA_OPTS=()
+          if [[ -n "${TOKEN}" ]]; then
+            # Try both header names used by Vercel over time
+            EXTRA_OPTS=(-H "x-vercel-protection-bypass: ${TOKEN}" -H "x-vercel-bypass-token: ${TOKEN}")
+            echo "Using protection bypass header"
+          fi
           check() {
             local method=$1 path=$2 expect=$3
             local code="000"
             if [[ "$method" == "HEAD" ]]; then
-              code=$(curl -sS -o /dev/null -w "%{http_code}" -I -L --connect-timeout 10 --max-time 20 "$BASE$path" || echo "000")
+              code=$(curl -sS -o /dev/null -w "%{http_code}" -I -L --connect-timeout 10 --max-time 20 "${EXTRA_OPTS[@]}" "$BASE$path" || echo "000")
             else
-              code=$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" -L --connect-timeout 10 --max-time 20 "$BASE$path" || echo "000")
+              code=$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" -L --connect-timeout 10 --max-time 20 "${EXTRA_OPTS[@]}" "$BASE$path" || echo "000")
             fi
             echo "$method $path => $code (expected $expect)"
             if [[ "$code" != "$expect" ]]; then
