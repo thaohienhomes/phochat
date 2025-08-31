@@ -56,6 +56,7 @@ jobs:
 
             if [[ "$STATE" == "READY" && -n "$URL" ]]; then
               echo "ready_url=https://$URL" >> "$GITHUB_OUTPUT"
+              echo "ready_id=$ID" >> "$GITHUB_OUTPUT"
               break
             fi
             if [[ "$STATE" == "ERROR" || "$STATE" == "CANCELED" ]]; then
@@ -67,6 +68,47 @@ jobs:
 
           if [[ -z "${URL:-}" || "$STATE" != "READY" ]]; then
             echo "Timed out waiting for deployment to be READY"
+
+      - name: Diagnostics (project/org/commit and root path)
+        shell: bash
+        env:
+          BASE: ${{ steps.wait.outputs.ready_url }}
+          DEPLOYMENT_ID: ${{ steps.wait.outputs.ready_id }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROTECTION_BYPASS_TOKEN: ${{ secrets.VERCEL_PROTECTION_BYPASS_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Diagnostics:"
+          echo "- Project ID: ${VERCEL_PROJECT_ID:-unset}"
+          echo "- Org ID:     ${VERCEL_ORG_ID:-unset}"
+          echo "- Branch:     ${BRANCH}"
+          echo "- Ready URL:  ${BASE}"
+          echo "- Deploy ID:  ${DEPLOYMENT_ID:-unknown}"
+
+          # Pull the deployment details to confirm commit & branch
+          if [[ -n "${DEPLOYMENT_ID:-}" ]]; then
+            curl -fsS "https://api.vercel.com/v13/deployments/${DEPLOYMENT_ID}" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" | jq '{id: .uid, url, state, meta: {githubCommitRef: .meta.githubCommitRef, githubCommitSha: .meta.githubCommitSha}}'
+          fi
+
+          # Hit root path to see what is served
+          TOKEN="${VERCEL_PROTECTION_BYPASS_TOKEN:-}"
+          EXTRA_OPTS=()
+          URL_WITH_QP="$BASE"
+          if [[ -n "$TOKEN" ]]; then
+            EXTRA_OPTS=(-H "x-vercel-protection-bypass: ${TOKEN}" -H "x-vercel-bypass-token: ${TOKEN}")
+            if [[ "$URL_WITH_QP" == *"?"* || "$URL_WITH_QP" == *"&"* ]]; then
+              URL_WITH_QP="${URL_WITH_QP}&x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
+            else
+              URL_WITH_QP="${URL_WITH_QP}?x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
+            fi
+          fi
+          echo "Probing root: $URL_WITH_QP"
+          status=$(curl -sS -o /dev/null -w "%{http_code}" -L "${EXTRA_OPTS[@]}" "$URL_WITH_QP" || echo 000)
+          echo "GET / => $status"
+
             exit 1
           fi
 
