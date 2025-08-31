@@ -1,0 +1,253 @@
+name: Vercel Deploy Monitor and Endpoint Validator
+
+on:
+  push:
+    branches:
+      - chore/next15-setup
+      - chore/trigger-prod-deploy
+      - main
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to monitor (defaults to current ref name)"
+        required: false
+        default: ""
+      sync_envs:
+        description: "If 'true', upsert AI gateway envs in Vercel before monitoring"
+        required: false
+        default: "false"
+      ai_base_url:
+        description: "AI Gateway Base URL to set when syncing envs"
+        required: false
+        default: "https://ai-gateway.vercel.sh/v1"
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: ${{ inputs.branch || github.ref_name }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      AI_GATEWAY_KEY: ${{ secrets.VERCEL_AI_GATEWAY_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure jq is available
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y jq
+          fi
+
+      - name: Wait for latest Vercel deployment for branch to be READY
+        id: wait
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Monitoring branch: $BRANCH"
+          if [[ -z "${VERCEL_TOKEN:-}" || -z "${VERCEL_PROJECT_ID:-}" ]]; then
+            echo "Missing Vercel secrets. Please set VERCEL_TOKEN and VERCEL_PROJECT_ID (and optionally VERCEL_ORG_ID)."
+            exit 1
+          fi
+
+          # Poll deployments until a READY one is found for the branch
+          # Uses the metadata 'githubCommitRef' which Vercel sets for GitHub-linked projects
+          for i in {1..60}; do
+            RESP=$(curl -fsS "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&limit=1&meta-githubCommitRef=$BRANCH" \
+              -H "Authorization: Bearer $VERCEL_TOKEN")
+            ID=$(echo "$RESP" | jq -r '.deployments[0].uid // empty')
+            URL=$(echo "$RESP" | jq -r '.deployments[0].url // empty')
+            STATE=$(echo "$RESP" | jq -r '.deployments[0].state // empty')
+            echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") id=$ID state=$STATE url=$URL"
+
+            if [[ "$STATE" == "READY" && -n "$URL" ]]; then
+              echo "ready_url=https://$URL" >> "$GITHUB_OUTPUT"
+              echo "ready_id=$ID" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            if [[ "$STATE" == "ERROR" || "$STATE" == "CANCELED" ]]; then
+              echo "Deployment failed with state: $STATE"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          if [[ -z "${URL:-}" || "$STATE" != "READY" ]]; then
+            echo "Timed out waiting for deployment to be READY"
+            exit 1
+          fi
+      - name: Optionally sync AI gateway envs to Vercel
+        if: ${{ inputs.sync_envs == 'true' }}
+        shell: bash
+        env:
+          AI_GATEWAY_BASE_URL: ${{ inputs.ai_base_url }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${AI_GATEWAY_KEY:-}" ]]; then
+            echo "::error::Missing secret VERCEL_AI_GATEWAY_KEY in repo settings"; exit 1; fi
+          TARGETS_JSON='["production","preview"]'
+          echo "Upserting AI gateway envs at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          payload_base=$(jq -n --arg key AI_GATEWAY_BASE_URL --arg value "$AI_GATEWAY_BASE_URL" --argjson target "$TARGETS_JSON" --arg type plain '{key:$key, value:$value, target:$target, type:$type}')
+          payload_key=$(jq -n --arg key AI_GATEWAY_KEY --arg value "$AI_GATEWAY_KEY" --argjson target "$TARGETS_JSON" --arg type encrypted '{key:$key, value:$value, target:$target, type:$type}')
+          # delete old entries first
+          list=$(curl -fsS "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env?decrypt=false" -H "Authorization: Bearer ${VERCEL_TOKEN}")
+          for k in AI_GATEWAY_BASE_URL AI_GATEWAY_KEY; do
+            ids=$(echo "$list" | jq -r --arg K "$k" '.envs[] | select(.key==$K) | .id')
+            while IFS= read -r id; do [[ -z "$id" ]] && continue; curl -fsS -X DELETE "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env/${id}" -H "Authorization: Bearer ${VERCEL_TOKEN}" >/dev/null; done <<< "$ids"
+          done
+          # create new entries
+          curl -fsS -X POST "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env" -H "Authorization: Bearer ${VERCEL_TOKEN}" -H "Content-Type: application/json" -d "$payload_base" >/dev/null
+          curl -fsS -X POST "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env" -H "Authorization: Bearer ${VERCEL_TOKEN}" -H "Content-Type: application/json" -d "$payload_key" >/dev/null
+          echo "Synced AI gateway envs"
+
+          # Poll deployments until a READY one is found for the branch
+          # Uses the metadata 'githubCommitRef' which Vercel sets for GitHub-linked projects
+          for i in {1..60}; do
+            RESP=$(curl -fsS "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&limit=1&meta-githubCommitRef=$BRANCH" \
+              -H "Authorization: Bearer $VERCEL_TOKEN")
+            ID=$(echo "$RESP" | jq -r '.deployments[0].uid // empty')
+            URL=$(echo "$RESP" | jq -r '.deployments[0].url // empty')
+            STATE=$(echo "$RESP" | jq -r '.deployments[0].state // empty')
+            echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") id=$ID state=$STATE url=$URL"
+
+            if [[ "$STATE" == "READY" && -n "$URL" ]]; then
+              echo "ready_url=https://$URL" >> "$GITHUB_OUTPUT"
+              echo "ready_id=$ID" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            if [[ "$STATE" == "ERROR" || "$STATE" == "CANCELED" ]]; then
+              echo "Deployment failed with state: $STATE"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          if [[ -z "${URL:-}" || "$STATE" != "READY" ]]; then
+            echo "Timed out waiting for deployment to be READY"
+            exit 1
+          fi
+
+      - name: Diagnostics (project/org/commit and root path)
+        shell: bash
+        env:
+          BASE: ${{ steps.wait.outputs.ready_url }}
+          DEPLOYMENT_ID: ${{ steps.wait.outputs.ready_id }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROTECTION_BYPASS_TOKEN: ${{ secrets.VERCEL_PROTECTION_BYPASS_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Diagnostics:"
+          echo "- Project ID: ${VERCEL_PROJECT_ID:-unset}"
+          echo "- Org ID:     ${VERCEL_ORG_ID:-unset}"
+          echo "- Branch:     ${BRANCH}"
+          echo "- Ready URL:  ${BASE}"
+          echo "- Deploy ID:  ${DEPLOYMENT_ID:-unknown}"
+
+          # Verify project configuration (framework, rootDirectory, build/output commands)
+          echo "Project details:"
+          curl -fsS "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" | jq '{name, framework, rootDirectory, buildCommand, outputDirectory}' || true
+
+
+          # If framework is not set to Next.js, patch it now (user approved)
+          PROJ_JSON=$(curl -fsS "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}" -H "Authorization: Bearer ${VERCEL_TOKEN}" || true)
+          FW=$(echo "$PROJ_JSON" | jq -r '.framework // empty')
+          if [[ -z "$FW" || "$FW" != "nextjs" ]]; then
+            echo "Framework is '$FW' -> patching to nextjs"
+            curl -fsS -X PATCH "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{"framework":"nextjs"}' | jq '{name, framework, rootDirectory}' || true
+            echo "Re-fetching project details after patch:"
+            curl -fsS "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" | jq '{name, framework, rootDirectory}' || true
+          fi
+
+
+          # Pull the deployment details to confirm commit & branch and list functions
+          if [[ -n "${DEPLOYMENT_ID:-}" ]]; then
+            curl -fsS "https://api.vercel.com/v13/deployments/${DEPLOYMENT_ID}" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" | jq '{id: .uid, url, state, meta: {githubCommitRef: .meta.githubCommitRef, githubCommitSha: .meta.githubCommitSha}}' || true
+            echo "Functions (top-level):"
+            curl -fsS "https://api.vercel.com/v13/deployments/${DEPLOYMENT_ID}/files?path=functions&limit=100" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" | jq '.files | (.[0:10] // []) | map({name: .name, type: .type})' || true
+          fi
+
+          # Hit root path to see what is served
+          TOKEN="${VERCEL_PROTECTION_BYPASS_TOKEN:-}"
+          EXTRA_OPTS=()
+          URL_WITH_QP="$BASE"
+          if [[ -n "$TOKEN" ]]; then
+            EXTRA_OPTS=(-H "x-vercel-protection-bypass: ${TOKEN}" -H "x-vercel-bypass-token: ${TOKEN}")
+            if [[ "$URL_WITH_QP" == *"?"* || "$URL_WITH_QP" == *"&"* ]]; then
+              URL_WITH_QP="${URL_WITH_QP}&x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
+            else
+              URL_WITH_QP="${URL_WITH_QP}?x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
+            fi
+          fi
+          echo "Probing root: $URL_WITH_QP"
+          status=$(curl -sS -o /dev/null -w "%{http_code}" -L "${EXTRA_OPTS[@]}" "$URL_WITH_QP" || echo 000)
+          echo "GET / => $status"
+
+      - name: Validate API endpoints
+        shell: bash
+        env:
+          BASE: ${{ steps.wait.outputs.ready_url }}
+          VERCEL_PROTECTION_BYPASS_TOKEN: ${{ secrets.VERCEL_PROTECTION_BYPASS_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Checking endpoints on $BASE"
+          fail=0
+          # Build optional headers and query param for protected preview deployments
+          TOKEN="${VERCEL_PROTECTION_BYPASS_TOKEN:-${VERCEL_BYPASS_TOKEN:-}}"
+          EXTRA_OPTS=()
+          if [[ -n "${TOKEN}" ]]; then
+            # Try both header names used by Vercel over time
+            EXTRA_OPTS=(-H "x-vercel-protection-bypass: ${TOKEN}" -H "x-vercel-bypass-token: ${TOKEN}")
+            echo "Using protection bypass header"
+          fi
+          with_token_url() {
+            local url="$1"
+            if [[ -z "${TOKEN}" ]]; then echo "$url"; return; fi
+            if [[ "$url" == *"?"* || "$url" == *"&"* ]]; then
+              echo "${url}&x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
+            else
+              echo "${url}?x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
+            fi
+          }
+          check() {
+            local method=$1 path=$2 expect=$3
+            local code="000"
+            local url="$BASE$path"
+            url=$(with_token_url "$url")
+            if [[ "$method" == "HEAD" ]]; then
+              code=$(curl -sS -o /dev/null -w "%{http_code}" -I -L --connect-timeout 10 --max-time 20 "${EXTRA_OPTS[@]}" "$url" || echo "000")
+            else
+              code=$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" -L --connect-timeout 10 --max-time 20 "${EXTRA_OPTS[@]}" "$url" || echo "000")
+            fi
+            echo "$method $path => $code (expected $expect)"
+            if [[ "$code" != "$expect" ]]; then
+              echo "::error::Expected $expect but got $code for $method $path"
+              fail=1
+            fi
+          }
+          # Health endpoint
+          check HEAD /api/health 200
+          check GET  /api/health 200
+          # AI test endpoint
+          check HEAD /api/ai/test 200
+          check GET  /api/ai/test 200
+          if [[ $fail -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Summary
+        shell: bash
+        env:
+          BASE: ${{ steps.wait.outputs.ready_url }}
+        run: echo "All endpoint checks passed on $BASE"

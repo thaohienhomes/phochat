@@ -1,0 +1,96 @@
+name: Vercel Env Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      projectId:
+        description: "Vercel Project ID (defaults to secrets.VERCEL_PROJECT_ID)"
+        required: false
+        default: ""
+      baseUrl:
+        description: "AI Gateway Base URL"
+        required: false
+        default: "https://ai-gateway.vercel.sh/v1"
+      targets:
+        description: "Comma-separated targets: production,preview,development"
+        required: false
+        default: "production,preview"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: ${{ inputs.projectId || secrets.VERCEL_PROJECT_ID }}
+      AI_GATEWAY_BASE_URL: ${{ inputs.baseUrl }}
+      AI_GATEWAY_KEY: ${{ secrets.VERCEL_AI_GATEWAY_KEY }}
+    steps:
+      - name: Ensure jq is available
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y jq
+          fi
+
+      - name: Validate prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${VERCEL_TOKEN:-}" ]]; then echo "::error::Missing VERCEL_TOKEN secret"; exit 1; fi
+          if [[ -z "${VERCEL_PROJECT_ID:-}" ]]; then echo "::error::Missing inputs.projectId or VERCEL_PROJECT_ID secret"; exit 1; fi
+          if [[ -z "${AI_GATEWAY_KEY:-}" ]]; then echo "::error::Missing VERCEL_AI_GATEWAY_KEY secret"; exit 1; fi
+          echo "Inputs validated at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+      - name: Upsert AI Gateway envs in Vercel
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGETS_JSON=$(echo "${{ inputs.targets }}" | jq -R 'split(",")')
+          echo "Targets: $(echo "$TARGETS_JSON" | jq -c '.')"
+
+          list_envs() {
+            curl -fsS "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env?decrypt=false" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}"
+          }
+
+          delete_env_by_id() {
+            local id="$1"
+            curl -fsS -X DELETE "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env/${id}" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" >/dev/null
+          }
+
+          create_env() {
+            local key="$1"; local value="$2"; local type="$3"; # type: encrypted|plain
+            local payload
+            payload=$(jq -n --arg key "$key" --arg value "$value" --argjson targets "$TARGETS_JSON" --arg type "$type" '{key:$key, value:$value, target:$targets, type:$type}')
+            # Do not echo secret values
+            curl -fsS -X POST "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$payload" | jq '{id, key, target}'
+          }
+
+          upsert_env() {
+            local key="$1"; local value="$2"; local type="$3"
+            echo "Upserting $key at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            local existing ids
+            existing=$(list_envs)
+            ids=$(echo "$existing" | jq -r --arg K "$key" '.envs[] | select(.key==$K) | .id')
+            if [[ -n "$ids" ]]; then
+              echo "$key exists; deleting old entries"
+              while IFS= read -r id; do
+                [[ -z "$id" ]] && continue
+                delete_env_by_id "$id"
+              done <<< "$ids"
+            fi
+            create_env "$key" "$value" "$type" >/dev/null
+            echo "$key upserted"
+          }
+
+          # Upsert base URL (plain)
+          upsert_env "AI_GATEWAY_BASE_URL" "${AI_GATEWAY_BASE_URL}" "plain"
+
+          # Upsert key (encrypted)
+          upsert_env "AI_GATEWAY_KEY" "${AI_GATEWAY_KEY}" "encrypted"
+
+          echo "Done at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"

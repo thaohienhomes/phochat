@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import { streamText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { getAIBaseURL, getAIKey } from "@/lib/aiConfig";
 
 export const dynamic = "force-dynamic"; // ensure streaming works in dev/prod
 export const runtime = "nodejs"; // ensure Node runtime for streaming
 
-const apiKey = process.env.AI_GATEWAY_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_KEY;
-const baseURL = process.env.AI_GATEWAY_BASE_URL || process.env.NEXT_PUBLIC_AI_GATEWAY_BASE_URL;
+const apiKey = getAIKey();
+const baseURL = getAIBaseURL();
 
-// Use 'compatible' to hit /chat/completions for OpenAI-compatible gateways
-const openai = createOpenAI({ apiKey, baseURL, compatibility: "compatible" });
+// OpenAI provider (Chat Completions)
+const openai = createOpenAI({ apiKey, baseURL });
 
 function json(status: number, data: any) {
   return NextResponse.json(data, { status });
@@ -47,4 +48,3 @@ export async function POST(req: Request) {
     return json(500, { error: message, stack });
   }
 }
-

@@ -356,18 +356,6 @@ function ChatPageInner() {
               </Button>
             </div>
           </div>
-                  handleSend();
-                }
-              }
-            }}
-            placeholder="Type your message..."
-            className="min-h-[100px]"
-          />
-          <div className="flex justify-end">
-            <Button onClick={handleSend} disabled={sending || sendGuardRef.current || !input.trim() }>
-              {sending ? "Sending..." : sendGuardRef.current ? "Sending..." : "Send"}
-            </Button>
-          </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       </Card>
