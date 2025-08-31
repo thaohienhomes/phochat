@@ -49,3 +49,4 @@ See [Next.js deployment docs](https://nextjs.org/docs/app/building-your-applicat
 
 
 Production deploy trigger 2.
+\nNote: pages API fallbacks added to ensure Vercel preview stability. (commit 2025-08-31T23:10:20.0665374+07:00)
