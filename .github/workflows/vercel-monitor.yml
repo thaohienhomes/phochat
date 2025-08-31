@@ -185,9 +185,9 @@ jobs:
           if [[ -n "$TOKEN" ]]; then
             EXTRA_OPTS=(-H "x-vercel-protection-bypass: ${TOKEN}" -H "x-vercel-bypass-token: ${TOKEN}")
             if [[ "$URL_WITH_QP" == *"?"* || "$URL_WITH_QP" == *"&"* ]]; then
-              URL_WITH_QP="${URL_WITH_QP}&x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
+              URL_WITH_QP="${URL_WITH_QP}&x-vercel-set-bypass-cookie=true&x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
             else
-              URL_WITH_QP="${URL_WITH_QP}?x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
+              URL_WITH_QP="${URL_WITH_QP}?x-vercel-set-bypass-cookie=true&x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
             fi
           fi
           echo "Probing root: $URL_WITH_QP"
@@ -215,9 +215,9 @@ jobs:
             local url="$1"
             if [[ -z "${TOKEN}" ]]; then echo "$url"; return; fi
             if [[ "$url" == *"?"* || "$url" == *"&"* ]]; then
-              echo "${url}&x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
+              echo "${url}&x-vercel-set-bypass-cookie=true&x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
             else
-              echo "${url}?x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
+              echo "${url}?x-vercel-set-bypass-cookie=true&x-vercel-protection-bypass=${TOKEN}&x-vercel-bypass-token=${TOKEN}"
             fi
           }
           check() {
