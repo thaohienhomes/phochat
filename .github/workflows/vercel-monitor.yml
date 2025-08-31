@@ -77,13 +77,19 @@ jobs:
         run: |
           set -euo pipefail
           echo "Checking endpoints on $BASE"
-          function check() {
+          fail=0
+          check() {
             local method=$1 path=$2 expect=$3
-            code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$BASE$path")
+            local code="000"
+            if [[ "$method" == "HEAD" ]]; then
+              code=$(curl -sS -o /dev/null -w "%{http_code}" -I -L --connect-timeout 10 --max-time 20 "$BASE$path" || echo "000")
+            else
+              code=$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" -L --connect-timeout 10 --max-time 20 "$BASE$path" || echo "000")
+            fi
             echo "$method $path => $code (expected $expect)"
             if [[ "$code" != "$expect" ]]; then
               echo "::error::Expected $expect but got $code for $method $path"
-              exit 1
+              fail=1
             fi
           }
           # Health endpoint
@@ -92,6 +98,9 @@ jobs:
           # AI test endpoint
           check HEAD /api/ai/test 200
           check GET  /api/ai/test 200
+          if [[ $fail -ne 0 ]]; then
+            exit 1
+          fi
 
       - name: Summary
         shell: bash
