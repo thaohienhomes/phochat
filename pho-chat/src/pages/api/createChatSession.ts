@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { fetchMutation } from "convex/nextjs";
-import { createChatSession } from "../../../convex/functions/createChatSession";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../convex/_generated/api";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -16,7 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const session = await fetchMutation(createChatSession, { userId, model }, { url: resolvedUrl });
+    const client = new ConvexHttpClient(resolvedUrl);
+    const session = await client.mutation(api.functions.createChatSession, { userId, model });
     return res.status(200).json(session);
   } catch (err: any) {
     return res.status(500).json({
