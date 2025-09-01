@@ -19,7 +19,8 @@ Set the following Environment Variables in Vercel Project → Settings → Envir
 
 - AI_GATEWAY_BASE_URL = https://ai-gateway.vercel.sh/v1/openai
 - AI_GATEWAY_KEY = <your_vck_key>  (Server-side only)
-- NEXT_PUBLIC_CONVEX_URL = https://clean-ox-220.convex.cloud
+- NEXT_PUBLIC_CONVEX_URL = https://beloved-hyena-231.convex.cloud
+- ALLOWED_ORIGINS = (optional comma-separated list; leave empty for same-origin only)
 
 Notes:
 - Keep AI keys server-side (do not expose in NEXT_PUBLIC_ unless for local dev only)
