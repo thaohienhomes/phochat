@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     if (!userId || !model) {
       return NextResponse.json({ error: "Missing userId or model" }, { status: 400, headers: corsHeaders() });
     }
-    const url = process.env.NEXT_PUBLIC_CONVEX_URL || "https://clean-ox-220.convex.cloud";
+    const url = process.env.NEXT_PUBLIC_CONVEX_URL || "https://beloved-hyena-231.convex.cloud";
     const client = new ConvexHttpClient(url);
     const id = await client.mutation(api.functions.createChatSession, { userId, model });
     return NextResponse.json({ id }, { status: 200, headers: corsHeaders() });
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     // Provide lightweight diagnostics to debug Preview failures; does not include secrets.
     const msg = err?.message || String(err);
     const stack = typeof err?.stack === 'string' ? err.stack.split('\n')[0] : undefined;
-    const url = process.env.NEXT_PUBLIC_CONVEX_URL || "https://clean-ox-220.convex.cloud";
+    const url = process.env.NEXT_PUBLIC_CONVEX_URL || "https://beloved-hyena-231.convex.cloud";
     const detail = (err?.data ? { data: err.data } : {});
     return NextResponse.json(
       { error: "Convex call failed", message: msg, stack, url, ...detail },
