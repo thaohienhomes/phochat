@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     }
     const url = process.env.NEXT_PUBLIC_CONVEX_URL || "https://beloved-hyena-231.convex.cloud";
     const client = new ConvexHttpClient(url);
-    const id = await client.mutation(api.functions.createChatSession, { userId, model });
+    const id = await client.mutation(api.functions.createChatSession.createChatSession, { userId, model });
     return NextResponse.json({ id }, { status: 200, headers: corsHeaders() });
   } catch (err: any) {
     // Provide lightweight diagnostics to debug Preview failures; does not include secrets.
