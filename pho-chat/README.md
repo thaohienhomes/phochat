@@ -48,5 +48,5 @@ To learn more about Next.js, take a look at the following resources:
 See [Next.js deployment docs](https://nextjs.org/docs/app/building-your-application/deploying) and ensure environment variables are set in Vercel.
 
 
-Production deploy trigger 2.
-\nNote: pages API fallbacks added to ensure Vercel preview stability. (commit 2025-08-31T23:10:20.0665374+07:00)
+Production deploy trigger 3.
+\nNote: ensure NEXT_PUBLIC_CONVEX_URL is set on Vercel for createChatSession to work in Preview.
