@@ -1,6 +1,7 @@
-import { mutation } from "../_generated/server";
-import type { MutationCtx } from "../_generated/server";
+import { mutation, query } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
+import { Doc } from "../_generated/dataModel";
 
 export const sendMessage = mutation({
   args: {
@@ -13,17 +14,79 @@ export const sendMessage = mutation({
     }),
   },
   handler: async (
-    { db }: MutationCtx,
+    ctx: MutationCtx,
     { sessionId, message }: { sessionId: any; message: { id: string; role: string; content: string; createdAt: number } }
   ) => {
-    const session = await db.get(sessionId);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Called sendMessage without authentication present");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier)
+      )
+      .unique();
+
+    if (user === null) {
+      throw new Error("User not found");
+    }
+
+    if (user.tier === "free") {
+      // For free users, we don't save the chat history.
+      return { ok: true } as const;
+    }
+
+    const session = await ctx.db.get(sessionId) as Doc<"chat_sessions">;
     if (!session) throw new Error("Session not found");
 
     const messages = Array.isArray(session.messages) ? session.messages : [];
     const next = [...messages, message];
 
-    await db.patch(sessionId, { messages: next });
+    await ctx.db.patch(sessionId, { messages: next });
     return { ok: true } as const;
   },
 });
 
+export const getChatHistory = query({
+  args: {},
+  handler: async (ctx: QueryCtx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier)
+      )
+      .unique();
+
+    if (user === null) {
+      return [];
+    }
+
+    const sessions = await ctx.db
+      .query("chat_sessions")
+      .withIndex("by_user", (q) => q.eq("user_id", user._id))
+      .collect();
+
+    return sessions;
+  },
+});
+
+export const getChatHistoryForSession = query({
+  args: { sessionId: v.id("chat_sessions") },
+  handler: async (ctx: QueryCtx, { sessionId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const session = await ctx.db.get(sessionId);
+
+    return session;
+  },
+});
