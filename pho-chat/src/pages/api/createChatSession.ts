@@ -1,18 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { run } from "convex/nextjs";
-import { createChatSession } from "../../../convex/functions/createChatSession";
+import { fetchMutation } from "convex/nextjs";
+import { api } from "../../../convex/_generated/api";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Ensure Convex URL is available at runtime in serverless environments
-  // If not set in Vercel env vars, fall back to the known deployment used locally.
+  // Resolve Convex URL without mutating process.env (safe for serverless)
   const resolvedUrl = process.env.NEXT_PUBLIC_CONVEX_URL || "https://clean-ox-220.convex.cloud";
-  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-    process.env.NEXT_PUBLIC_CONVEX_URL = resolvedUrl;
-  }
 
   const { userId, model } = req.body as { userId?: string; model?: string };
   if (!userId || !model) {
@@ -20,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const session = await run(createChatSession, { userId, model });
+    const session = await fetchMutation(api["functions"]["createChatSession"], { userId, model }, { url: resolvedUrl });
     return res.status(200).json(session);
   } catch (err: any) {
     return res.status(500).json({
