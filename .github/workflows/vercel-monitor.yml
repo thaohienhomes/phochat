@@ -21,6 +21,10 @@ on:
         description: "AI Gateway Base URL to set when syncing envs"
         required: false
         default: "https://ai-gateway.vercel.sh/v1"
+      convex_url:
+        description: "Convex deployment URL to set as NEXT_PUBLIC_CONVEX_URL when syncing envs"
+        required: false
+        default: ""
 
 jobs:
   monitor:
@@ -84,6 +88,7 @@ jobs:
         shell: bash
         env:
           AI_GATEWAY_BASE_URL: ${{ inputs.ai_base_url }}
+          CONVEX_URL_INPUT: ${{ inputs.convex_url }}
         run: |
           set -euo pipefail
           if [[ -z "${AI_GATEWAY_KEY:-}" ]]; then
@@ -94,14 +99,19 @@ jobs:
           payload_key=$(jq -n --arg key AI_GATEWAY_KEY --arg value "$AI_GATEWAY_KEY" --argjson target "$TARGETS_JSON" --arg type encrypted '{key:$key, value:$value, target:$target, type:$type}')
           # delete old entries first
           list=$(curl -fsS "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env?decrypt=false" -H "Authorization: Bearer ${VERCEL_TOKEN}")
-          for k in AI_GATEWAY_BASE_URL AI_GATEWAY_KEY; do
+          for k in AI_GATEWAY_BASE_URL AI_GATEWAY_KEY NEXT_PUBLIC_CONVEX_URL; do
             ids=$(echo "$list" | jq -r --arg K "$k" '.envs[] | select(.key==$K) | .id')
             while IFS= read -r id; do [[ -z "$id" ]] && continue; curl -fsS -X DELETE "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env/${id}" -H "Authorization: Bearer ${VERCEL_TOKEN}" >/dev/null; done <<< "$ids"
           done
           # create new entries
           curl -fsS -X POST "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env" -H "Authorization: Bearer ${VERCEL_TOKEN}" -H "Content-Type: application/json" -d "$payload_base" >/dev/null
           curl -fsS -X POST "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env" -H "Authorization: Bearer ${VERCEL_TOKEN}" -H "Content-Type: application/json" -d "$payload_key" >/dev/null
-          echo "Synced AI gateway envs"
+          if [[ -n "${CONVEX_URL_INPUT:-}" ]]; then
+            echo "Upserting NEXT_PUBLIC_CONVEX_URL=$CONVEX_URL_INPUT"
+            payload_convex=$(jq -n --arg key NEXT_PUBLIC_CONVEX_URL --arg value "$CONVEX_URL_INPUT" --argjson target "$TARGETS_JSON" --arg type plain '{key:$key, value:$value, target:$target, type:$type}')
+            curl -fsS -X POST "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env" -H "Authorization: Bearer ${VERCEL_TOKEN}" -H "Content-Type: application/json" -d "$payload_convex" >/dev/null
+          fi
+          echo "Synced environment values"
 
           # Poll deployments until a READY one is found for the branch
           # Uses the metadata 'githubCommitRef' which Vercel sets for GitHub-linked projects
@@ -242,6 +252,17 @@ jobs:
           # AI test endpoint
           check HEAD /api/ai/test 200
           check GET  /api/ai/test 200
+          # Extra POST checks
+          code=$(curl -sS -o /dev/null -w "%{http_code}" -L -H "Content-Type: application/json" "${EXTRA_OPTS[@]}" -d '{"model":"gpt-4o-mini","prompt":"Say hello in five words."}' -X POST "$(with_token_url "$BASE/api/ai/test")" || echo 000)
+          echo "POST /api/ai/test => $code (expected 200)"
+          if [[ "$code" != "200" ]]; then echo "::error::POST /api/ai/test failed"; fail=1; fi
+          code=$(curl -sS -o /dev/null -w "%{http_code}" -L -H "Content-Type: application/json" "${EXTRA_OPTS[@]}" -d '{"model":"gpt-4o-mini","prompt":"Say hello."}' -X POST "$(with_token_url "$BASE/api/ai/stream")" || echo 000)
+          echo "POST /api/ai/stream => $code (expected 200)"
+          if [[ "$code" != "200" ]]; then echo "::error::POST /api/ai/stream failed"; fail=1; fi
+          # Optional Convex route (skip failure): /api/createChatSession
+          code=$(curl -sS -o /dev/null -w "%{http_code}" -L -H "Content-Type: application/json" "${EXTRA_OPTS[@]}" -d '{"userId":"verify-user","model":"gpt-4o-mini"}' -X POST "$(with_token_url "$BASE/api/createChatSession")" || echo 000)
+          echo "POST /api/createChatSession => $code (expected 200 if Convex configured)"
+          if [[ "$code" != "200" ]]; then echo "::warning::createChatSession returned $code; ensure NEXT_PUBLIC_CONVEX_URL set for Preview"; fi
           if [[ $fail -ne 0 ]]; then
             exit 1
           fi
