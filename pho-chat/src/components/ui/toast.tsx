@@ -42,12 +42,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 export function useToast() {
   const ctx = React.useContext(ToastContext);
   if (!ctx) throw new Error("useToast must be used within ToastProvider");
-
-  const { push } = ctx;
   return {
-    push,
-    success: (message: string, duration = 1800) => push({ message, duration, variant: "success" }),
-    error: (message: string, duration = 2200) => push({ message, duration, variant: "error" }),
+    push: ctx.push,
+    success: (message: string, duration = 1800) => ctx.push({ message, duration, variant: "success" }),
+    error: (message: string, duration = 2200) => ctx.push({ message, duration, variant: "error" }),
   };
 }
 
