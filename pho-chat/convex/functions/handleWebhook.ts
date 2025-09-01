@@ -1,13 +1,30 @@
-import { httpAction, mutation } from "../_generated/server";
-import type { ActionCtx, MutationCtx } from "../_generated/server";
+import { httpAction, mutation, internalMutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 
-export const handleWebhook = httpAction(async (ctx: ActionCtx, request: Request) => {
-  try {
-    const url = new URL(request.url);
-    const provider = url.searchParams.get("provider") || "unknown";
-    const body = await request.json().catch(() => ({}));
+export const handleWebhook = httpAction(async (ctx, request) => {
+  const url = new URL(request.url);
+  const provider = url.searchParams.get("provider") || "unknown";
+  const body = await request.json().catch(() => ({}));
 
+  await ctx.runMutation(internal.functions.handleWebhook.internalHandleWebhook, {
+    provider,
+    body,
+  });
+
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+});
+
+export const internalHandleWebhook = internalMutation({
+  args: {
+    provider: v.string(),
+    body: v.any(),
+  },
+  handler: async (ctx, { provider, body }) => {
     if (provider === "revenuecat") {
       const userId: string | undefined = body?.app_user_id || body?.event?.app_user_id;
       const tier: string | undefined = body?.entitlements?.pro ? "pro" : "free";
@@ -57,17 +74,7 @@ export const handleWebhook = httpAction(async (ctx: ActionCtx, request: Request)
         });
       }
     }
-
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ ok: false, error: String(err) }), {
-      status: 500,
-      headers: { "content-type": "application/json" },
-    });
-  }
+  },
 });
 
 export const upsertSubscription = mutation({

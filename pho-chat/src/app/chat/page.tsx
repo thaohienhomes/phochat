@@ -1,21 +1,20 @@
 "use client";
 
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-
 import { useToast } from "@/components/ui/toast";
-
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-
-// Temporary fallback imports until codegen completes
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
+import { useUser, UserButton } from "@clerk/nextjs";
+import { api } from "../../../../convex/_generated/api";
+import Link from "next/link";
+import { useRevenueCat } from "@/components/providers/revenuecat-provider";
 
 // Types (lightweight)
 type ChatMessage = { id: string; role: string; content: string; createdAt: number };
@@ -28,7 +27,7 @@ const MODELS = [
 
 function SessionMessages({ sessionId }: { sessionId: string | null }) {
   const session = useQuery(
-    "functions/getChatSession:getChatSession" as any,
+    api.functions.getChatSession.getChatSession as any,
     (sessionId ? { sessionId } : "skip") as any
   );
   const loading = sessionId && !session;
@@ -56,7 +55,6 @@ function SessionMessages({ sessionId }: { sessionId: string | null }) {
   );
 }
 
-
 function ChatPageInner() {
   const params = useSearchParams();
   const initialSessionId = params ? params.get("sessionId") : null;
@@ -70,16 +68,27 @@ function ChatPageInner() {
 
   const { success } = useToast();
 
-  // New session form state
-  const [newUserId, setNewUserId] = React.useState<string>("");
   const [creating, setCreating] = React.useState<boolean>(false);
-
   const [copied, setCopied] = React.useState(false);
 
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const { user } = useUser();
+  const storeUser = useMutation(api.users.storeUser);
+  const { products, isPro, purchasePackage } = useRevenueCat();
+
+  React.useEffect(() => {
+    // If the user is signed in and we haven't stored them yet,
+    // do so now.
+    if (isAuthenticated && !isLoading) {
+      storeUser({});
+    }
+  }, [isAuthenticated, isLoading, storeUser]);
+
+  const tier = useQuery(api.users.getTier, isAuthenticated ? {} : "skip");
+  const chatHistory = useQuery(api.functions.sendMessage.getChatHistoryForSession, sessionId ? { sessionId } : "skip");
 
   // Guard to prevent rapid double-submits
   const sendGuardRef = React.useRef(false);
-
 
   // Refs for UX
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
@@ -125,25 +134,33 @@ function ChatPageInner() {
     }
   }
 
+  function handleExport() {
+    if (!chatHistory) return;
+    const data = JSON.stringify(chatHistory, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chat-history-${sessionId}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   // Mutations
-  const createSessionMut = useMutation("functions/createChatSession:createChatSession" as any);
-  const sendMessageMut = useMutation("functions/sendMessage:sendMessage" as any);
+  const createSessionMut = useMutation(api.functions.createChatSession.createChatSession as any);
+  const sendMessageMut = useMutation(api.functions.sendMessage.sendMessage as any);
 
   React.useEffect(() => {
     if (!sessionId && initialSessionId) setSessionId(initialSessionId);
   }, [initialSessionId, sessionId]);
 
   async function handleCreateSession() {
-    console.log("[Chat] New Session clicked", { newUserId, model });
-    if (!newUserId.trim()) {
-      console.log("[Chat] Aborting: empty userId");
-      return;
-    }
+    if (!user) return;
+    console.log("[Chat] New Session clicked", { userId: user.id, model });
     try {
       setCreating(true);
       setError(null);
-      const id = await createSessionMut({ userId: newUserId.trim(), model });
+      const id = await createSessionMut({ userId: user.id, model });
       console.log("[Chat] createChatSession result", id);
       setSessionId(String(id));
     } catch (e: any) {
@@ -155,6 +172,7 @@ function ChatPageInner() {
   }
 
   async function handleSend() {
+    if (!user) return;
     console.log("[Chat] Send clicked", { sessionId, inputLength: input.length, model });
     if (!input.trim()) {
       console.log("[Chat] Aborting send: empty input");
@@ -170,11 +188,10 @@ function ChatPageInner() {
       setSending(true);
       setStreamingText("");
 
-      // Auto-create a session if missing (fallback for easier testing)
       let sid = sessionId;
       if (!sid) {
         try {
-          const id = await createSessionMut({ userId: `guest-${Date.now()}`, model });
+          const id = await createSessionMut({ userId: user.id, model });
           console.log("[Chat] Auto-created session", id);
           sid = String(id);
           setSessionId(sid);
@@ -204,7 +221,6 @@ function ChatPageInner() {
         body: JSON.stringify({ model, prompt: input }),
         signal: ac.signal,
       });
-      // Stop button UI is enabled while streaming
 
       if (!res.ok || !res.body) {
         const text = await res.text();
@@ -225,7 +241,6 @@ function ChatPageInner() {
       }
       abortRef.current = null;
 
-      // If stream completed with no chunks, fetch full text once
       if (!acc) {
         try {
           const full = await fetch("/api/ai/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, prompt: input }) }).then(r => r.json());
@@ -244,7 +259,7 @@ function ChatPageInner() {
       console.log("[Chat] sendMessage assistant", { length: acc.length });
       await sendMessageMut({ sessionId: sessionId as any, message: assistantMessage as any });
       setInput("");
-      setStreamingText(""); // clear placeholder to avoid duplicate visual message
+      setStreamingText("");
     } catch (e: any) {
       console.error("[Chat] send flow failed", e);
       setError(e.message || String(e));
@@ -259,7 +274,7 @@ function ChatPageInner() {
       <Card className="p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm text-muted-foreground">
-            Tier: <span className="font-medium">free</span>{" "}
+            Tier: <span className="font-medium">{isPro ? "Pro" : tier ?? "..."}</span>{" "}
             {sessionId ? (
               <span className="ml-2">Session: {sessionId}</span>
             ) : (
@@ -275,21 +290,33 @@ function ChatPageInner() {
                 ))}
               </SelectContent>
             </Select>
+            {!isPro && products.map((pack) => (
+              <Button key={pack.identifier} onClick={() => purchasePackage(pack)}>
+                Upgrade to {pack.product.title}
+              </Button>
+            ))}
+            {tier === "team" && (
+              <Link href="/admin">
+                <Button>Admin</Button>
+              </Link>
+            )}
+            {isLoading && <Skeleton className="h-8 w-8 rounded-full" />}
+            {!isLoading && !isAuthenticated && (
+              <Button onClick={() => window.location.href = "/sign-in"}>Sign In</Button>
+            )}
+            {!isLoading && isAuthenticated && <UserButton afterSignOutUrl="/" />}
           </div>
         </div>
 
-        {/* New Session Flow */}
-        <div className="rounded-md border p-3 space-y-2">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Input placeholder="userId" value={newUserId} onChange={(e) => setNewUserId(e.target.value)} />
-            <Input placeholder="model" value={model} onChange={(e) => setModel(e.target.value)} />
+        {isAuthenticated && (
+          <div className="rounded-md border p-3 space-y-2">
+            <div className="flex justify-end">
+              <Button onClick={handleCreateSession} disabled={creating}>
+                {creating ? "Creating…" : "New Session"}
+              </Button>
+            </div>
           </div>
-          <div className="flex justify-end">
-            <Button onClick={handleCreateSession} disabled={creating || !newUserId.trim()}>
-              {creating ? "Creating…" : "New Session"}
-            </Button>
-          </div>
-        </div>
+        )}
 
         <div ref={scrollRef} className="h-[55vh] overflow-y-auto rounded-md border p-3 space-y-3 bg-background">
           <SessionMessages sessionId={sessionId} />
@@ -302,8 +329,6 @@ function ChatPageInner() {
         </div>
 
         <div className="space-y-2">
-          {/* Shortcut tooltip on focus/hover */}
-
           <Tooltip>
             <TooltipTrigger asChild>
               <Textarea
@@ -311,31 +336,29 @@ function ChatPageInner() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                // Ctrl/Cmd + Enter => explicit newline
-                e.preventDefault();
-                setInput((prev) => `${prev}\n`);
-                return;
-              }
-              if (e.key === "Enter" && e.shiftKey) {
-                // Shift+Enter is disabled (no newline, no send)
-                e.preventDefault();
-                return;
-              }
-              if (e.key === "Enter") {
-                // Plain Enter => send
-                e.preventDefault();
-                if (!sending && !sendGuardRef.current && input.trim()) {
-                  handleSend();
-                }
-              }
-            }}
-            placeholder="Type your message..."
-            className="min-h-[100px]"
-          />
-              </TooltipTrigger>
-              <TooltipContent sideOffset={6}>Enter to send • Ctrl/Cmd+Enter newline</TooltipContent>
-            </Tooltip>
+                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    setInput((prev) => `${prev}\n`);
+                    return;
+                  }
+                  if (e.key === "Enter" && e.shiftKey) {
+                    e.preventDefault();
+                    return;
+                  }
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (!sending && !sendGuardRef.current && input.trim()) {
+                      handleSend();
+                    }
+                  }
+                }}
+                placeholder="Type your message..."
+                className="min-h-[100px]"
+                disabled={!isAuthenticated}
+              />
+            </TooltipTrigger>
+            <TooltipContent sideOffset={6}>Enter to send • Ctrl/Cmd+Enter newline</TooltipContent>
+          </Tooltip>
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
@@ -345,28 +368,21 @@ function ChatPageInner() {
               <Button size="sm" variant="secondary" onClick={handleNewChat}>
                 New chat
               </Button>
+              {tier === "pro" && (
+                <Button size="sm" variant="outline" onClick={handleExport} disabled={!chatHistory}>
+                  Export Chat
+                </Button>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <span>Enter to send • Ctrl/Cmd+Enter newline</span>
               <Button size="sm" variant="destructive" onClick={handleStop} disabled={!sending}>
                 Stop
               </Button>
-              <Button onClick={handleSend} disabled={sending || sendGuardRef.current || !input.trim()}>
+              <Button onClick={handleSend} disabled={!isAuthenticated || sending || sendGuardRef.current || !input.trim()}>
                 {sending ? "Sending..." : sendGuardRef.current ? "Sending..." : "Send"}
               </Button>
             </div>
-          </div>
-                  handleSend();
-                }
-              }
-            }}
-            placeholder="Type your message..."
-            className="min-h-[100px]"
-          />
-          <div className="flex justify-end">
-            <Button onClick={handleSend} disabled={sending || sendGuardRef.current || !input.trim() }>
-              {sending ? "Sending..." : sendGuardRef.current ? "Sending..." : "Send"}
-            </Button>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
@@ -382,4 +398,3 @@ export default function ChatPage() {
     </React.Suspense>
   );
 }
-
