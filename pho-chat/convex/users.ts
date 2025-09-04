@@ -17,7 +17,7 @@ export const storeUser = mutation({
       )
       .unique();
     if (user !== null) {
-<<<<<<< HEAD
+
       const patch: Record<string, any> = {};
       if (user.name !== (identity.name ?? "")) patch.name = identity.name ?? "";
       if (clerkUserId && user.clerkUserId !== clerkUserId) patch.clerkUserId = clerkUserId;

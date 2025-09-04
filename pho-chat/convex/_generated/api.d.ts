@@ -20,8 +20,11 @@ import type * as functions_getChatSession from "../functions/getChatSession.js";
 import type * as functions_handleWebhook from "../functions/handleWebhook.js";
 import type * as functions_sendMessage from "../functions/sendMessage.js";
 import type * as http from "../http.js";
+import type * as httpHandlers_revenuecat from "../httpHandlers/revenuecat.js";
 import type * as index from "../index.js";
+import type * as revenuecat from "../revenuecat.js";
 import type * as types from "../types.js";
+import type * as users from "../users.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -39,8 +42,11 @@ declare const fullApi: ApiFromModules<{
   "functions/handleWebhook": typeof functions_handleWebhook;
   "functions/sendMessage": typeof functions_sendMessage;
   http: typeof http;
+  "httpHandlers/revenuecat": typeof httpHandlers_revenuecat;
   index: typeof index;
+  revenuecat: typeof revenuecat;
   types: typeof types;
+  users: typeof users;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
