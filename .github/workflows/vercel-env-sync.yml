@@ -10,7 +10,7 @@ on:
       baseUrl:
         description: "AI Gateway Base URL"
         required: false
-        default: "https://ai-gateway.vercel.sh/v1"
+        default: "https://ai-gateway.vercel.sh/v1/openai"
       targets:
         description: "Comma-separated targets: production,preview,development"
         required: false

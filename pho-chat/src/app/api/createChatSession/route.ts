@@ -6,7 +6,6 @@ import { auth } from "@clerk/nextjs/server";
 export const runtime = "nodejs";
 // Basic model allowlist
 const ALLOWED_MODELS = new Set(["gpt-4o-mini", "gpt-4o", "o3-mini"]);
-
 export const dynamic = "force-dynamic";
 
 // CORS: default to same-origin. Allow an explicit allowlist via env ALLOWED_ORIGINS (comma-separated).
@@ -43,6 +42,7 @@ export async function OPTIONS(req: Request) {
 
 export async function POST(req: Request) {
   try {
+
     const { model } = (await req.json()) as { model?: string };
     if (!model) {
       return NextResponse.json({ error: "Missing model" }, { status: 400, headers: buildCorsHeaders(req) });
@@ -58,6 +58,7 @@ export async function POST(req: Request) {
     const url = process.env.NEXT_PUBLIC_CONVEX_URL || "https://beloved-hyena-231.convex.cloud";
     const client = new ConvexHttpClient(url);
     const id = await client.mutation(api.functions.createChatSession.createChatSession, { model });
+
     return NextResponse.json({ id }, { status: 200, headers: buildCorsHeaders(req) });
   } catch (err: any) {
     // Provide lightweight diagnostics to debug Preview failures; does not include secrets.

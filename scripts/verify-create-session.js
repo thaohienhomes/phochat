@@ -1,5 +1,5 @@
-const BASE = 'https://pho-chat-by7v3tw38-thaohienhomes-gmailcoms-projects.vercel.app';
-const TOKEN = 'eHAj5rateRnkDjbtdxG6Pn9iAk7qugmD';
+const BASE = process.env.BASE;
+const TOKEN = process.env.VERCEL_BYPASS_TOKEN;
 
 async function main() {
   const res = await fetch(`${BASE}/api/createChatSession`, {
@@ -9,7 +9,7 @@ async function main() {
       'x-vercel-protection-bypass': TOKEN,
       'x-vercel-bypass-token': TOKEN,
     },
-    body: JSON.stringify({ userId: 'verify-user', model: 'gpt-4o-mini' }),
+    body: JSON.stringify({ model: 'gpt-4o-mini' }),
   });
   const text = await res.text();
   console.log('status', res.status);

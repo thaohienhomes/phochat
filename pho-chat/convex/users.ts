@@ -17,10 +17,12 @@ export const storeUser = mutation({
       )
       .unique();
     if (user !== null) {
+<<<<<<< HEAD
       const patch: Record<string, any> = {};
       if (user.name !== (identity.name ?? "")) patch.name = identity.name ?? "";
       if (clerkUserId && user.clerkUserId !== clerkUserId) patch.clerkUserId = clerkUserId;
       if (Object.keys(patch).length) await ctx.db.patch(user._id, patch);
+
       return user._id;
     }
     // If it's a new identity, create a new user.

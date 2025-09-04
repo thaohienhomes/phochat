@@ -75,6 +75,7 @@ function ChatPageInner() {
   const { user } = useUser();
   const storeUser = useMutation(api.users.storeUser);
 
+
   const [products, setProducts] = React.useState([]);
   const [isPro, setIsPro] = React.useState(false);
 
@@ -113,6 +114,7 @@ function ChatPageInner() {
       storeUser({ clerkUserId: user.id });
     }
   }, [isAuthenticated, isLoading, user, storeUser]);
+
 
   const tier = useQuery(api.users.getTier, isAuthenticated ? {} : "skip");
   const chatHistory = useQuery(api.functions.sendMessage.getChatHistoryForSession, sessionId ? { sessionId } : "skip");
@@ -428,3 +430,4 @@ export default function ChatPage() {
     </React.Suspense>
   );
 }
+
