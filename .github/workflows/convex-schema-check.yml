@@ -49,6 +49,9 @@ jobs:
       - name: Next.js build (smoke)
         run: npm run build --if-present
 
+      - name: Run unit tests (vitest)
+        run: npm test --if-present
+
       - name: Convex dev one-off (schema validation if secrets present)
         env:
           CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}

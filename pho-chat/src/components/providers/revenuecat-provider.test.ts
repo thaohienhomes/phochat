@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 /*
  Minimal smoke test to ensure RevenueCat provider initializes without throwing
  when NEXT_PUBLIC_REVENUECAT_API_KEY is set. This is a compile + runtime smoke
