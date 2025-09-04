@@ -46,16 +46,16 @@ jobs:
       - name: Generate Convex code (local)
         run: npx convex codegen
 
-      - name: Convex dev one-off (schema validation)
-        if: ${{ secrets.CONVEX_DEPLOYMENT != '' && secrets.CONVEX_DEPLOY_KEY != '' }}
+      - name: Convex dev one-off (schema validation if secrets present)
         env:
           CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-        run: npx convex dev --once
-
-      - name: Skip Convex dev (no secrets present)
-        if: ${{ !(secrets.CONVEX_DEPLOYMENT != '' && secrets.CONVEX_DEPLOY_KEY != '') }}
         run: |
-          echo "Skipping 'npx convex dev --once' because CONVEX_DEPLOYMENT/CONVEX_DEPLOY_KEY are not set in repo or org secrets."
-          echo "Type-check and local codegen have passed, which catch most schema regressions."
+          if [ -n "${CONVEX_DEPLOYMENT}" ] && [ -n "${CONVEX_DEPLOY_KEY}" ]; then
+            echo "Running 'npx convex dev --once' against ${CONVEX_DEPLOYMENT}"
+            npx convex dev --once
+          else
+            echo "Skipping 'npx convex dev --once' because CONVEX_DEPLOYMENT/CONVEX_DEPLOY_KEY are not set."
+            echo "Type-check and local codegen have passed, which catch most schema regressions."
+          fi
 
