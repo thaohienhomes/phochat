@@ -1,8 +1,9 @@
 import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
 
 export const storeUser = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { clerkUserId: v.optional(v.string()) },
+  handler: async (ctx, { clerkUserId }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Called storeUser without authentication present");
@@ -16,16 +17,17 @@ export const storeUser = mutation({
       )
       .unique();
     if (user !== null) {
-      // If we've seen this identity before but the name has changed, patch the user.
-      if (user.name !== identity.name) {
-        await ctx.db.patch(user._id, { name: identity.name });
-      }
+      const patch: Record<string, any> = {};
+      if (user.name !== (identity.name ?? "")) patch.name = identity.name ?? "";
+      if (clerkUserId && user.clerkUserId !== clerkUserId) patch.clerkUserId = clerkUserId;
+      if (Object.keys(patch).length) await ctx.db.patch(user._id, patch);
       return user._id;
     }
     // If it's a new identity, create a new user.
     return await ctx.db.insert("users", {
-      name: identity.name!,
+      name: identity.name ?? "",
       tokenIdentifier: identity.tokenIdentifier,
+      clerkUserId: clerkUserId ?? "",
       tier: "free",
     });
   },

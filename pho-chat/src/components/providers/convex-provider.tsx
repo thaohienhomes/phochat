@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ConvexProvider } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { useAuth } from "@clerk/nextjs";
 import { getConvexClient } from "@/lib/convex";
 
 export function ConvexProviderClient({ children }: { children: React.ReactNode }) {
@@ -13,5 +14,9 @@ export function ConvexProviderClient({ children }: { children: React.ReactNode }
     return <>{children}</>;
   }
 
-  return <ConvexProvider client={clientRef.current}>{children}</ConvexProvider>;
+  return (
+    <ConvexProviderWithClerk client={clientRef.current} useAuth={useAuth}>
+      {children}
+    </ConvexProviderWithClerk>
+  );
 }

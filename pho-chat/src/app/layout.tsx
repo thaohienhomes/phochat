@@ -1,3 +1,5 @@
+"use client";
+
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -5,6 +7,7 @@ import './globals.css';
 // Example shadcn/ui providers imported for ease of use across the app
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ToastProvider } from '@/components/ui/toast';
+import { ClerkProvider } from '@clerk/nextjs';
 import { ConvexProviderClient } from '@/components/providers/convex-provider';
 
 const geistSans = Geist({
@@ -28,16 +31,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <ConvexProviderClient>
-          <ToastProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-          </ToastProvider>
-        </ConvexProviderClient>
-      </body>
-    </html>
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}>
+      <ConvexProviderClient>
+        <html lang="en">
+          <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+            <ToastProvider>
+              <TooltipProvider>{children}</TooltipProvider>
+            </ToastProvider>
+          </body>
+        </html>
+      </ConvexProviderClient>
+    </ClerkProvider>
   );
 }

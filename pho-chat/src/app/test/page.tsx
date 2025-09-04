@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function TestPage() {
-  const [userId, setUserId] = React.useState("");
   const [model, setModel] = React.useState("gpt-4o-mini");
   const [sessionId, setSessionId] = React.useState<string | null>(null);
   const [content, setContent] = React.useState("");
@@ -16,7 +15,7 @@ export default function TestPage() {
   const [createError, setCreateError] = React.useState<string | null>(null);
   const [sendError, setSendError] = React.useState<string | null>(null);
 
-  const canCreate = Boolean(userId.trim() && model.trim());
+  const canCreate = Boolean(model.trim());
   const canSend = Boolean(sessionId && content.trim());
 
   async function createSession() {
@@ -27,7 +26,7 @@ export default function TestPage() {
       const res = await fetch("/api/createChatSession", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, model }),
+        body: JSON.stringify({ model }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to create session");
@@ -68,11 +67,6 @@ export default function TestPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Create Session</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input
-            placeholder="userId"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-          />
           <Input
             placeholder="model"
             value={model}

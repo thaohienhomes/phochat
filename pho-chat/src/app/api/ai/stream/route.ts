@@ -16,6 +16,8 @@ function json(status: number, data: any) {
   return NextResponse.json(data, { status });
 }
 
+const ALLOWED_MODELS = new Set(["gpt-4o-mini", "gpt-4o", "o3-mini"]);
+
 export async function POST(req: Request) {
   try {
     const { model = "gpt-4o-mini", prompt } = (await req.json()) as {
@@ -24,6 +26,7 @@ export async function POST(req: Request) {
     };
 
     if (!prompt) return json(400, { error: "Missing prompt" });
+    if (model && !ALLOWED_MODELS.has(model)) return json(400, { error: "Unsupported model" });
 
     if (!apiKey) {
       return json(500, { error: "AI key missing. Set AI_GATEWAY_KEY (or NEXT_PUBLIC_AI_GATEWAY_KEY) in .env.local." });

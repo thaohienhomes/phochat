@@ -41,6 +41,11 @@ export const sendMessage = mutation({
     const session = await ctx.db.get(sessionId) as Doc<"chat_sessions">;
     if (!session) throw new Error("Session not found");
 
+    // Ensure the session belongs to the authenticated user
+    if (String(session.user_id) !== String(user._id)) {
+      throw new Error("Forbidden: session does not belong to user");
+    }
+
     const messages = Array.isArray(session.messages) ? session.messages : [];
     const next = [...messages, message];
 
@@ -85,7 +90,15 @@ export const getChatHistoryForSession = query({
       return null;
     }
 
-    const session = await ctx.db.get(sessionId);
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!user) return null;
+
+    const session = await ctx.db.get(sessionId) as Doc<"chat_sessions">;
+    if (!session) return null;
+    if (String(session.user_id) !== String(user._id)) return null;
 
     return session;
   },
