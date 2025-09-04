@@ -2,8 +2,7 @@ import type { Metadata } from 'next';
 export { metadata, dynamic, revalidate } from './metadata';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import dynamic from 'next/dynamic';
-const AppProviders = dynamic(() => import('./providers').then(m => m.AppProviders), { ssr: false });
+import { AppProviders } from './providers';
 
 
 const geistSans = Geist({

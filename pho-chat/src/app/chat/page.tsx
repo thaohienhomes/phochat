@@ -1,4 +1,7 @@
 "use client";
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
