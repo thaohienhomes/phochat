@@ -9,6 +9,8 @@ on:
       - chore/convex-enforce-user-id-ids
     paths:
       - 'pho-chat/**'
+  workflow_dispatch:
+
 
 permissions:
   contents: read
