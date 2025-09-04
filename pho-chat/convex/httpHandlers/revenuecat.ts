@@ -1,6 +1,7 @@
 
 
 import { httpAction } from "../_generated/server";
+import { api } from "../_generated/api";
 
 async function hmacSha256Hex(secret: string, payload: string): Promise<string> {
   const enc = new TextEncoder();
@@ -43,16 +44,7 @@ export const revenuecatWebhook = httpAction(async (ctx, request) => {
     // Map RevenueCat app_user_id to our stored user.
     let user = null as any;
     if (app_user_id) {
-      user = await ctx.db
-        .query("users")
-        .withIndex("by_clerk", (q) => q.eq("clerkUserId", app_user_id))
-        .unique();
-      if (!user) {
-        user = await ctx.db
-          .query("users")
-          .withIndex("by_token", (q) => q.eq("tokenIdentifier", app_user_id))
-          .unique();
-      }
+      user = await ctx.runQuery(api.users.getUserByClerkOrToken, { id: app_user_id });
     }
 
     if (!user) {
@@ -60,7 +52,7 @@ export const revenuecatWebhook = httpAction(async (ctx, request) => {
     }
 
     const tier = entitlements?.pro ? "pro" : "free";
-    await ctx.db.patch(user._id, { tier });
+    await ctx.runMutation(api.users.setTierById, { userId: user._id, tier });
 
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
   } catch (e: any) {

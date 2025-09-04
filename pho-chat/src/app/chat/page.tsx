@@ -14,7 +14,7 @@ import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { api } from "../../../convex/_generated/api";
 import Link from "next/link";
-import Purchases from "@revenuecat/purchases-js";
+import { Purchases } from "@revenuecat/purchases-js";
 
 // Types (lightweight)
 type ChatMessage = { id: string; role: string; content: string; createdAt: number };
@@ -76,32 +76,41 @@ function ChatPageInner() {
   const storeUser = useMutation(api.users.storeUser);
 
 
-  const [products, setProducts] = React.useState([]);
+  const [products, setProducts] = React.useState<any[]>([]);
   const [isPro, setIsPro] = React.useState(false);
 
   React.useEffect(() => {
     const initRevenueCat = async () => {
       if (user && typeof window !== 'undefined') {
-        await Purchases.configure({ apiKey: process.env.NEXT_PUBLIC_REVENUECAT_API_KEY });
-        const offerings = await Purchases.getOfferings();
+        const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
+        if (!apiKey) return;
+        const appUserId = user.id || (Purchases as any).generateRevenueCatAnonymousAppUserId?.();
+        const purchases = Purchases.configure({ apiKey, appUserId });
+        const offerings = await purchases.getOfferings();
         if (offerings.current) {
-          setProducts(offerings.current.availablePackages);
+          setProducts(offerings.current.availablePackages as any[]);
         }
-        const customerInfo = await Purchases.getCustomerInfo();
-        setIsPro(customerInfo.entitlements.active.pro ? true : false);
+        const customerInfo = await purchases.getCustomerInfo();
+        const activeMap: any = customerInfo.entitlements.active || {};
+        setIsPro(Boolean(activeMap['pro']?.isActive));
       }
     };
     initRevenueCat();
   }, [user]);
 
-  const purchasePackage = async (pack) => {
+  const purchasePackage = async (pack: any) => {
     try {
-      const { customerInfo } = await Purchases.purchasePackage(pack);
-      if (customerInfo.entitlements.active.pro) {
+      const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
+      if (!apiKey) return;
+      const appUserId = user?.id || (Purchases as any).generateRevenueCatAnonymousAppUserId?.();
+      const purchases = Purchases.configure({ apiKey, appUserId });
+      const result = await purchases.purchase({ rcPackage: pack });
+      const activeMap: any = result.customerInfo.entitlements.active || {};
+      if (activeMap['pro']?.isActive) {
         setIsPro(true);
       }
     } catch (e) {
-      if (!e.userCancelled) {
+      if (e && typeof e === 'object' && !(e as any).userCancelled) {
         console.log(e);
       }
     }
@@ -117,7 +126,7 @@ function ChatPageInner() {
 
 
   const tier = useQuery(api.users.getTier, isAuthenticated ? {} : "skip");
-  const chatHistory = useQuery(api.functions.sendMessage.getChatHistoryForSession, sessionId ? { sessionId } : "skip");
+  const chatHistory = useQuery(api.functions.sendMessage.getChatHistoryForSession, sessionId ? { sessionId: sessionId as any } : "skip");
 
   // Guard to prevent rapid double-submits
   const sendGuardRef = React.useRef(false);
@@ -241,7 +250,7 @@ function ChatPageInner() {
         createdAt: Date.now(),
       };
       console.log("[Chat] sendMessage user", userMessage);
-      await sendMessageMut({ sessionId: sid, message: userMessage });
+      await sendMessageMut({ sessionId: sid as any, message: userMessage });
 
       // Stream AI response
       abortRef.current?.abort();
@@ -289,7 +298,7 @@ function ChatPageInner() {
         createdAt: Date.now(),
       };
       console.log("[Chat] sendMessage assistant", { length: acc.length });
-      await sendMessageMut({ sessionId: sid, message: assistantMessage });
+      await sendMessageMut({ sessionId: sid as any, message: assistantMessage });
       setInput("");
       setStreamingText("");
     } catch (e: any) {
@@ -322,9 +331,9 @@ function ChatPageInner() {
                 ))}
               </SelectContent>
             </Select>
-            {!isPro && products.map((pack) => (
+            {!isPro && (products as any[]).map((pack: any) => (
               <Button key={pack.identifier} onClick={() => purchasePackage(pack)}>
-                Upgrade to {pack.product.title}
+                Upgrade to {pack.webBillingProduct?.title || pack.rcBillingProduct?.title || 'Pro'}
               </Button>
             ))}
             {tier === "team" && (
