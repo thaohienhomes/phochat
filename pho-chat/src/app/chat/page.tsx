@@ -15,6 +15,7 @@ import { useUser, UserButton } from "@clerk/nextjs";
 import { api } from "../../../convex/_generated/api";
 import Link from "next/link";
 import { Purchases } from "@revenuecat/purchases-js";
+import { toChatSessionId } from "@/lib/ids";
 
 // Types (lightweight)
 type ChatMessage = { id: string; role: string; content: string; createdAt: number };
@@ -126,7 +127,10 @@ function ChatPageInner() {
 
 
   const tier = useQuery(api.users.getTier, isAuthenticated ? {} : "skip");
-  const chatHistory = useQuery(api.functions.sendMessage.getChatHistoryForSession, sessionId ? { sessionId: sessionId as any } : "skip");
+  const chatHistory = useQuery(
+    api.functions.sendMessage.getChatHistoryForSession,
+    sessionId ? { sessionId: toChatSessionId(sessionId) } : "skip"
+  );
 
   // Guard to prevent rapid double-submits
   const sendGuardRef = React.useRef(false);
@@ -250,7 +254,7 @@ function ChatPageInner() {
         createdAt: Date.now(),
       };
       console.log("[Chat] sendMessage user", userMessage);
-      await sendMessageMut({ sessionId: sid as any, message: userMessage });
+      await sendMessageMut({ sessionId: toChatSessionId(sid), message: userMessage });
 
       // Stream AI response
       abortRef.current?.abort();
@@ -298,7 +302,7 @@ function ChatPageInner() {
         createdAt: Date.now(),
       };
       console.log("[Chat] sendMessage assistant", { length: acc.length });
-      await sendMessageMut({ sessionId: sid as any, message: assistantMessage });
+      await sendMessageMut({ sessionId: toChatSessionId(sid), message: assistantMessage });
       setInput("");
       setStreamingText("");
     } catch (e: any) {
