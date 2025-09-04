@@ -15,6 +15,7 @@ import { useUser, UserButton } from "@clerk/nextjs";
 import { api } from "../../../convex/_generated/api";
 import Link from "next/link";
 import { Purchases } from "@revenuecat/purchases-js";
+import { RcPackage, extractPackages, isProFromEntitlements } from "@/lib/revenuecat";
 import { toChatSessionId } from "@/lib/ids";
 
 // Types (lightweight)
@@ -77,7 +78,7 @@ function ChatPageInner() {
   const storeUser = useMutation(api.users.storeUser);
 
 
-  const [products, setProducts] = React.useState<any[]>([]);
+  const [products, setProducts] = React.useState<RcPackage[]>([]);
   const [isPro, setIsPro] = React.useState(false);
 
   React.useEffect(() => {
@@ -88,26 +89,22 @@ function ChatPageInner() {
         const appUserId = user.id || (Purchases as any).generateRevenueCatAnonymousAppUserId?.();
         const purchases = Purchases.configure({ apiKey, appUserId });
         const offerings = await purchases.getOfferings();
-        if (offerings.current) {
-          setProducts(offerings.current.availablePackages as any[]);
-        }
+        setProducts(extractPackages(offerings));
         const customerInfo = await purchases.getCustomerInfo();
-        const activeMap: any = customerInfo.entitlements.active || {};
-        setIsPro(Boolean(activeMap['pro']?.isActive));
+        setIsPro(isProFromEntitlements(customerInfo?.entitlements?.active));
       }
     };
     initRevenueCat();
   }, [user]);
 
-  const purchasePackage = async (pack: any) => {
+  const purchasePackage = async (pack: RcPackage) => {
     try {
       const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
       if (!apiKey) return;
       const appUserId = user?.id || (Purchases as any).generateRevenueCatAnonymousAppUserId?.();
       const purchases = Purchases.configure({ apiKey, appUserId });
-      const result = await purchases.purchase({ rcPackage: pack });
-      const activeMap: any = result.customerInfo.entitlements.active || {};
-      if (activeMap['pro']?.isActive) {
+      const result = await purchases.purchase({ rcPackage: pack as any });
+      if (isProFromEntitlements(result?.customerInfo?.entitlements?.active)) {
         setIsPro(true);
       }
     } catch (e) {
@@ -335,7 +332,7 @@ function ChatPageInner() {
                 ))}
               </SelectContent>
             </Select>
-            {!isPro && (products as any[]).map((pack: any) => (
+            {!isPro && products.map((pack: RcPackage) => (
               <Button key={pack.identifier} onClick={() => purchasePackage(pack)}>
                 Upgrade to {pack.webBillingProduct?.title || pack.rcBillingProduct?.title || 'Pro'}
               </Button>

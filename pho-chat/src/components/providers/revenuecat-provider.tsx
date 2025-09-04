@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, createContext, useContext } from 'react';
 import { Purchases } from '@revenuecat/purchases-js';
+import { RcPackage, extractPackages, isProFromEntitlements } from "@/lib/revenuecat";
 
 const RevenueCatContext = createContext({});
 
@@ -9,7 +10,7 @@ export const useRevenueCat = () => useContext(RevenueCatContext);
 
 export const RevenueCatProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState(null);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<RcPackage[]>([]);
   const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
@@ -19,9 +20,7 @@ export const RevenueCatProvider = ({ children }: { children: React.ReactNode }) 
         if (!apiKey) return;
         const purchases = Purchases.configure({ apiKey, appUserId: 'web-user' });
         const offerings = await purchases.getOfferings();
-        if (offerings.current) {
-          setProducts(offerings.current.availablePackages as any[]);
-        }
+        setProducts(extractPackages(offerings));
       }
     };
     init();
@@ -33,20 +32,18 @@ export const RevenueCatProvider = ({ children }: { children: React.ReactNode }) 
       if (!apiKey) return;
       const purchases = Purchases.configure({ apiKey, appUserId: 'web-user' });
       const info = await purchases.getCustomerInfo();
-      const activeMap: any = info.entitlements.active || {};
-      setIsPro(Boolean(activeMap['pro']?.isActive));
+      setIsPro(isProFromEntitlements(info?.entitlements?.active));
     };
     checkSubscription();
   }, [user]);
 
-  const purchasePackage = async (pack: any) => {
+  const purchasePackage = async (pack: RcPackage) => {
     try {
       const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
       if (!apiKey) return;
       const purchases = Purchases.configure({ apiKey, appUserId: 'web-user' });
-      const result = await purchases.purchase({ rcPackage: pack });
-      const activeMap: any = result.customerInfo.entitlements.active || {};
-      if (activeMap['pro']?.isActive) {
+      const result = await purchases.purchase({ rcPackage: pack as any });
+      if (isProFromEntitlements(result?.customerInfo?.entitlements?.active)) {
         setIsPro(true);
       }
     } catch (e) {

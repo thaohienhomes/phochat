@@ -11,7 +11,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
     "convex:dev": "convex dev",
     "postinstall": "npm install typescript",
-    "test": "vitest run"
+    "test": "vitest run -c vitest.config.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.23",
@@ -52,6 +52,7 @@
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.7",
     "typescript": "^5.9.2",
+    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   }
 }
