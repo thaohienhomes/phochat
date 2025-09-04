@@ -1,0 +1,59 @@
+name: Convex Schema Check
+
+on:
+  pull_request:
+    paths:
+      - 'pho-chat/**'
+  push:
+    branches:
+      - chore/convex-enforce-user-id-ids
+    paths:
+      - 'pho-chat/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: convex-schema-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  schema:
+    name: Validate Convex schema and server build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pho-chat
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: pho-chat/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check (tsc)
+        run: npm run type-check
+
+      - name: Generate Convex code (local)
+        run: npx convex codegen
+
+      - name: Convex dev one-off (schema validation)
+        if: ${{ secrets.CONVEX_DEPLOYMENT != '' && secrets.CONVEX_DEPLOY_KEY != '' }}
+        env:
+          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: npx convex dev --once
+
+      - name: Skip Convex dev (no secrets present)
+        if: ${{ !(secrets.CONVEX_DEPLOYMENT != '' && secrets.CONVEX_DEPLOY_KEY != '') }}
+        run: |
+          echo "Skipping 'npx convex dev --once' because CONVEX_DEPLOYMENT/CONVEX_DEPLOY_KEY are not set in repo or org secrets."
+          echo "Type-check and local codegen have passed, which catch most schema regressions."
+
