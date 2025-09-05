@@ -1,0 +1,13 @@
+# Code owners for automatic reviewer assignment
+# Learn more: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Design docs and tokens
+/pho-chat/docs/** @thaohienhomes
+
+# Scripts (converters/generators)
+/scripts/** @thaohienhomes
+
+# GitHub workflows and labeler
+/.github/workflows/** @thaohienhomes
+/.github/labeler.yml @thaohienhomes
+

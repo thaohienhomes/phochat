@@ -1,0 +1,26 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Components/Dialog" />
+
+# Dialog
+
+Accessible modal built on Radix Dialog.
+
+## Sub-components
+
+- Dialog, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose
+
+## Example
+
+````tsx
+import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+<Dialog>
+  <DialogTrigger asChild><button>Open</button></DialogTrigger>
+  <DialogContent>
+    <DialogTitle>Title</DialogTitle>
+    <DialogDescription>Description</DialogDescription>
+    <DialogFooter>Footer actions</DialogFooter>
+  </DialogContent>
+</Dialog>
+````
+

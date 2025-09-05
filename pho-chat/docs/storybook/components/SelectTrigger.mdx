@@ -1,0 +1,26 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Components/SelectTrigger" />
+
+# SelectTrigger
+
+Trigger for the Select component.
+
+## Props
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| size | 'sm'|'default' | No | default | Trigger height |
+
+## Example
+
+````tsx
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+<Select>
+  <SelectTrigger size="sm"><SelectValue placeholder="Choose" /></SelectTrigger>
+  <SelectContent>
+    <SelectItem value="a">A</SelectItem>
+  </SelectContent>
+</Select>
+````
+
