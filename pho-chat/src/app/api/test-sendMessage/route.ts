@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
+import { toChatSessionId } from "@/lib/ids";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
     const url = process.env.NEXT_PUBLIC_CONVEX_URL || "";
     const client = new ConvexHttpClient(url);
     const msg = { id: String(Date.now()), role: "user", content, createdAt: Date.now() };
-    const res = await client.mutation(api.functions.sendMessage.sendMessage, { sessionId, message: msg });
+    const res = await client.mutation(api.functions.sendMessage.sendMessage, { sessionId: toChatSessionId(sessionId), message: msg });
     return NextResponse.json({ ok: true, res }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || String(err) }, { status: 500 });

@@ -35,6 +35,30 @@ export const storeUser = mutation({
   },
 });
 
+export const getUserByClerkOrToken = query({
+  args: { id: v.string() },
+  handler: async (ctx, { id }) => {
+    const byClerk = await ctx.db
+      .query("users")
+      .withIndex("by_clerk", (q) => q.eq("clerkUserId", id))
+      .unique();
+    if (byClerk) return byClerk;
+    const byToken = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", id))
+      .unique();
+    return byToken;
+  },
+});
+
+export const setTierById = mutation({
+  args: { userId: v.id("users"), tier: v.string() },
+  handler: async (ctx, { userId, tier }) => {
+    await ctx.db.patch(userId, { tier });
+  },
+});
+
+
 export const upgradeToPro = mutation({
   args: {},
   handler: async (ctx) => {
