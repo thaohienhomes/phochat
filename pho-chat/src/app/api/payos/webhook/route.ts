@@ -3,20 +3,11 @@ import { getPayOS } from "@/lib/payos";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../convex/_generated/api";
 import { logger } from "@/lib/logger";
+import { stableHash, deriveOrderStatus } from "@/lib/payosWebhook";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-function stableHash(obj: any): string {
-  try {
-    const s = JSON.stringify(obj, Object.keys(obj).sort());
-    let h = 0;
-    for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-    return String(h);
-  } catch {
-    return String(Date.now());
-  }
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Update order status based on webhook
-    const status = (verified as any)?.code === "00" || (verified as any)?.status === "PAID" ? "succeeded" : "failed";
+    const status = deriveOrderStatus(verified as any);
     await convex.mutation(api.orders.setStatusByOrderCode, { orderCode: verified.orderCode, status });
     logger.info("Order status updated from webhook", { orderCode: verified.orderCode, status });
 
