@@ -41,10 +41,40 @@ export default defineSchema({
     user_id: v.string(), // Clerk user id
     amount: v.number(),
     status: v.string(), // e.g. "pending" | "succeeded" | "failed"
-    provider: v.string(), // e.g. "revenuecat" | "qr"
+    provider: v.string(), // e.g. "revenuecat" | "qr" | "payos"
     created_at: v.number(),
+    receipts: v.any(), // store orderCode/paymentLinkId
   })
     .index("by_user", ["user_id"]) // list payments for a user
     .index("by_created", ["created_at"]),
+
+  // Minimal Orders for PayOS and future gateways
+  orders: defineTable({
+    user_id: v.string(),
+    amount: v.number(),
+    currency: v.optional(v.string()), // default VND at app layer
+    status: v.string(), // pending | succeeded | failed | expired
+    provider: v.optional(v.string()), // e.g. "payos"
+    orderCode: v.number(),
+    paymentLinkId: v.optional(v.string()),
+    checkoutUrl: v.optional(v.string()),
+    description: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_user", ["user_id"])
+    .index("by_orderCode", ["orderCode"])
+    .index("by_created", ["created_at"]),
+
+  // Event store for PayOS webhooks (idempotency)
+  payos_events: defineTable({
+    event_hash: v.string(),
+    orderCode: v.number(),
+    received_at: v.number(),
+    payload: v.any(),
+  })
+    .index("by_event_hash", ["event_hash"])
+    .index("by_orderCode", ["orderCode"]),
 });
 
