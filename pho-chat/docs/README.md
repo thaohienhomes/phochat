@@ -110,3 +110,23 @@ Open an issue or ping the code owner listed in CODEOWNERS. Happy building!
 - Storybook deploys
   - PRs build Storybook and upload an artifact named `storybook-static`.
   - Merges to `main` auto-deploy Storybook to GitHub Pages.
+
+
+## CI / Previews
+
+- Chromatic visual regression (PRs)
+  - Workflow: `.github/workflows/chromatic.yml`
+  - Requires repo secret: `CHROMATIC_PROJECT_TOKEN`
+  - Uploads your built Storybook and runs visual diffs
+- Storybook Preview on Vercel (PRs)
+  - Workflow: `.github/workflows/storybook-vercel.yml`
+  - Requires repo secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+  - Builds Storybook and deploys a preview URL per PR
+- GitHub Pages (main)
+  - Workflow: `.github/workflows/storybook-pages.yml`
+  - Deploys Storybook static site on merges to `main`
+
+
+- More details:
+  - Chromatic setup: docs/ci/chromatic.md
+  - Vercel Storybook preview: docs/ci/vercel-storybook.md
