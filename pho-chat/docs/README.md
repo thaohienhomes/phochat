@@ -92,3 +92,21 @@ npm --prefix pho-chat run storybook:build
 
 Open an issue or ping the code owner listed in CODEOWNERS. Happy building!
 
+
+
+## Contributing to Docs
+
+- Authoring
+  - Prefer MDX under `pho-chat/docs/storybook/**` for UI docs; plain Markdown under `pho-chat/docs/**` for engineering notes.
+  - Keep examples short; link to source when possible.
+- Tokens workflow
+  - Update `figma-tokens.json` when changing tokens; run `npm --prefix pho-chat run tokens:convert-all`.
+  - Commit `.rgb.json` outputs if you want staleness to be enforced.
+- PR hygiene
+  - The PR template includes a tokens/design checklist — please tick items that apply.
+  - PRs touching docs/design/scripts auto-label with `documentation`, `design-system`, and/or `tokens`.
+- Review
+  - CODEOWNERS will auto-request a reviewer for docs/design/scripts changes.
+- Storybook deploys
+  - PRs build Storybook and upload an artifact named `storybook-static`.
+  - Merges to `main` auto-deploy Storybook to GitHub Pages.

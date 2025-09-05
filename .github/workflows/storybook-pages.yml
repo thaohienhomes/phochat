@@ -1,0 +1,72 @@
+name: Build and Deploy Storybook
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'pho-chat/**'
+      - '.github/workflows/storybook-pages.yml'
+  pull_request:
+    paths:
+      - 'pho-chat/**'
+      - '.github/workflows/storybook-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  build_pr:
+    name: Build Storybook (PR artifact)
+    if: ${{ github.event_name == 'pull_request' && hashFiles('pho-chat/.storybook/**') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm --prefix pho-chat ci
+      - name: Generate tokens MDX
+        run: npm --prefix pho-chat run tokens:mdx
+      - name: Build Storybook
+        run: npm --prefix pho-chat run storybook:build
+      - name: Upload Storybook artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-static
+          path: pho-chat/storybook-static
+
+  deploy_pages:
+    name: Deploy Storybook to GitHub Pages (main only)
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && hashFiles('pho-chat/.storybook/**') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm --prefix pho-chat ci
+      - name: Generate tokens MDX
+        run: npm --prefix pho-chat run tokens:mdx
+      - name: Build Storybook
+        run: npm --prefix pho-chat run storybook:build
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pho-chat/storybook-static
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
