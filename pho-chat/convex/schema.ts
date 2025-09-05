@@ -43,6 +43,7 @@ export default defineSchema({
     status: v.string(), // e.g. "pending" | "succeeded" | "failed"
     provider: v.string(), // e.g. "revenuecat" | "qr"
     created_at: v.number(),
+    receipts: v.any(),
   })
     .index("by_user", ["user_id"]) // list payments for a user
     .index("by_created", ["created_at"]),
