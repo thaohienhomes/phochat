@@ -11,7 +11,11 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
     "convex:dev": "convex dev",
     "postinstall": "npm install typescript",
-    "test": "vitest run -c vitest.config.ts"
+    "test": "vitest run -c vitest.config.ts",
+    "tokens:ios": "node ../scripts/convert-oklch.js --in docs/design/tokens.ios.json --out docs/design/tokens.ios.rgb.json --alpha rgba",
+    "tokens:android": "node ../scripts/convert-oklch.js --in docs/design/tokens.android.json --out docs/design/tokens.android.rgb.json",
+    "tokens:mdx": "node ../scripts/generate-token-mdx.js --in docs/design/figma-tokens.json --out docs/storybook/foundations/GeneratedTokens.mdx",
+    "tokens:convert-all": "npm run tokens:ios && npm run tokens:android && npm run tokens:mdx"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.23",

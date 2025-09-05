@@ -1,0 +1,78 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Props" />
+
+# Component Props Reference
+
+This MDX summarizes props for key components. Source: `docs/design/component-spec.csv`.
+
+## Button
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| variant | 'default'|'destructive'|'outline'|'secondary'|'ghost'|'link' | No | default | Visual style |
+| size | 'default'|'sm'|'lg'|'icon' | No | default | Control size |
+| asChild | boolean | No | false | Render child as Slot |
+
+````tsx
+import { Button } from '@/components/ui/button';
+<Button>Primary</Button>
+<Button variant="secondary">Secondary</Button>
+<Button variant="outline" size="sm">Small</Button>
+````
+
+## SelectTrigger
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| size | 'sm'|'default' | No | default | Trigger height |
+
+````tsx
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+<Select>
+  <SelectTrigger><SelectValue placeholder="Model" /></SelectTrigger>
+  <SelectContent>
+    <SelectItem value="a">A</SelectItem>
+  </SelectContent>
+</Select>
+````
+
+## DialogContent
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| showCloseButton | boolean | No | true | Show close button |
+
+## SheetContent
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| side | 'top'|'right'|'bottom'|'left' | No | 'right' | Slide-in side |
+
+## DropdownMenuItem
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| variant | 'default'|'destructive' | No | default | Color intent |
+| inset | boolean | No | false | Indented item style |
+
+## TooltipProvider
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| delayDuration | number | No | 0 | Global tooltip delay (ms) |
+
+## Toast API
+
+| Function | Signature |
+|---|---|
+| push | (t: { message: string; variant?: 'default'|'success'|'error'; duration?: number }) => void |
+| success | (message: string, duration?: number) => void |
+| error | (message: string, duration?: number) => void |
+
+````tsx
+import { useToast } from '@/components/ui/toast';
+const { success, error } = useToast();
+success('Saved!', 1800);
+````
+

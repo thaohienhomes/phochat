@@ -1,0 +1,27 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Components/DialogContent" />
+
+# DialogContent
+
+Modal dialog surface with optional built-in close button.
+
+## Props
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| showCloseButton | boolean | No | true | Show top-right close button |
+
+## Example
+
+````tsx
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from '@/components/ui/dialog';
+<Dialog>
+  <DialogTrigger asChild><button>Open</button></DialogTrigger>
+  <DialogContent showCloseButton>
+    <DialogTitle>Title</DialogTitle>
+    Content
+  </DialogContent>
+</Dialog>
+````
+

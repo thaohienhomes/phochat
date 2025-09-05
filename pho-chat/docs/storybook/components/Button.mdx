@@ -1,0 +1,25 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Components/Button" />
+
+# Button
+
+Primary action button with variants and sizes.
+
+## Props
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| variant | 'default'|'destructive'|'outline'|'secondary'|'ghost'|'link' | No | default | Visual style |
+| size | 'default'|'sm'|'lg'|'icon' | No | default | Control size |
+| asChild | boolean | No | false | Render child element via Radix Slot |
+
+## Examples
+
+````tsx
+import { Button } from '@/components/ui/button';
+<Button>Primary</Button>
+<Button variant="secondary">Secondary</Button>
+<Button variant="outline" size="sm">Small</Button>
+````
+
