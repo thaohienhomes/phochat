@@ -1,0 +1,70 @@
+name: Convex Schema Check
+
+on:
+  pull_request:
+    paths:
+      - 'pho-chat/**'
+  push:
+    branches:
+      - chore/convex-enforce-user-id-ids
+    paths:
+      - 'pho-chat/**'
+  workflow_dispatch:
+
+
+permissions:
+  contents: read
+
+concurrency:
+  group: convex-schema-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  schema:
+    name: Validate Convex schema and server build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pho-chat
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: pho-chat/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Type check (tsc)
+        run: npm run type-check
+
+      - name: Generate Convex code (local)
+        run: npx convex codegen
+
+      - name: Next.js build (smoke)
+        run: npm run build --if-present
+
+      - name: Run unit tests (vitest)
+        run: npm test --if-present
+
+      - name: Convex dev one-off (schema validation if secrets present)
+        env:
+          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: |
+          if [ -n "${CONVEX_DEPLOYMENT}" ] && [ -n "${CONVEX_DEPLOY_KEY}" ]; then
+            echo "Running 'npx convex dev --once' against ${CONVEX_DEPLOYMENT}"
+            npx convex dev --once
+          else
+            echo "Skipping 'npx convex dev --once' because CONVEX_DEPLOYMENT/CONVEX_DEPLOY_KEY are not set."
+            echo "Type-check, local codegen, and Next.js build smoke have passed."
+          fi
+

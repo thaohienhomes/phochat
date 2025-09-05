@@ -1,27 +1,26 @@
 "use client";
 
 import React, { useEffect, useState, createContext, useContext } from 'react';
-import Purchases, { PurchasesStoreProduct } from 'react-native-purchases';
+import { Purchases } from '@revenuecat/purchases-js';
+import { RcPackage, extractPackages, isProFromEntitlements } from "@/lib/revenuecat";
 
 const RevenueCatContext = createContext({});
 
 export const useRevenueCat = () => useContext(RevenueCatContext);
 
-export const RevenueCatProvider = ({ children }) => {
+export const RevenueCatProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState(null);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<RcPackage[]>([]);
   const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
     const init = async () => {
       if (typeof window !== 'undefined') {
-        Purchases.setDebugLogsEnabled(true);
-        await Purchases.configure({ apiKey: process.env.NEXT_PUBLIC_REVENUECAT_API_KEY });
-
-        const offerings = await Purchases.getOfferings();
-        if (offerings.current) {
-          setProducts(offerings.current.availablePackages);
-        }
+        const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
+        if (!apiKey) return;
+        const purchases = Purchases.configure({ apiKey, appUserId: 'web-user' });
+        const offerings = await purchases.getOfferings();
+        setProducts(extractPackages(offerings));
       }
     };
     init();
@@ -29,20 +28,26 @@ export const RevenueCatProvider = ({ children }) => {
 
   useEffect(() => {
     const checkSubscription = async () => {
-      const customerInfo = await Purchases.getCustomerInfo();
-      setIsPro(customerInfo.entitlements.active.pro ? true : false);
+      const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
+      if (!apiKey) return;
+      const purchases = Purchases.configure({ apiKey, appUserId: 'web-user' });
+      const info = await purchases.getCustomerInfo();
+      setIsPro(isProFromEntitlements(info?.entitlements?.active));
     };
     checkSubscription();
   }, [user]);
 
-  const purchasePackage = async (pack: PurchasesStoreProduct) => {
+  const purchasePackage = async (pack: RcPackage) => {
     try {
-      const { customerInfo } = await Purchases.purchasePackage(pack);
-      if (customerInfo.entitlements.active.pro) {
+      const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
+      if (!apiKey) return;
+      const purchases = Purchases.configure({ apiKey, appUserId: 'web-user' });
+      const result = await purchases.purchase({ rcPackage: pack as any });
+      if (isProFromEntitlements(result?.customerInfo?.entitlements?.active)) {
         setIsPro(true);
       }
     } catch (e) {
-      if (!e.userCancelled) {
+      if (e && typeof e === 'object' && !(e as any).userCancelled) {
         console.log(e);
       }
     }

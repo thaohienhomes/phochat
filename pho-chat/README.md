@@ -16,6 +16,47 @@ Then run the Next.js dev server:
 npm run dev
 ```
 
+
+## Environment variables
+
+Copy `.env.example` to `.env.local` for development and fill values. Do NOT commit `.env.local`.
+
+Essential keys:
+- Clerk: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_JWT_ISSUER_DOMAIN`
+- Convex: `NEXT_PUBLIC_CONVEX_URL`
+- Vercel AI Gateway: `AI_GATEWAY_BASE_URL` (recommended `https://ai-gateway.vercel.sh/v1`), `AI_GATEWAY_KEY`
+- PayOS: `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`
+- Sentry (observability):
+  - `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` (DSN is not a secret)
+  - `SENTRY_ENVIRONMENT` (e.g. development, preview, production)
+  - `SENTRY_DEBUG` (true in dev, false in prod)
+  - `SENTRY_TRACES_SAMPLE_RATE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` (tune per env)
+  - `ENABLE_SENTRY_DEV_TOOLS` (set to `1` only in dev to enable `/dev/sentry` and helper API routes)
+
+Recommended values:
+- Development
+  - `SENTRY_ENVIRONMENT=development`
+  - `SENTRY_DEBUG=true`
+  - `ENABLE_SENTRY_DEV_TOOLS=1`
+  - `SENTRY_TRACES_SAMPLE_RATE=0.1`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0`
+- Production
+  - `SENTRY_ENVIRONMENT=production`
+  - `SENTRY_DEBUG=false`
+  - Do NOT set `ENABLE_SENTRY_DEV_TOOLS`
+  - Tune sampling according to traffic/error budgets
+
+See `.env.example` for a comprehensive list and comments.
+
+## Sentry dev tools
+
+In development, when `ENABLE_SENTRY_DEV_TOOLS=1` is set, you can visit `/dev/sentry` to:
+- Send a client error to Sentry
+- Send a server error to Sentry (calls `/api/sentry-capture`)
+- Open quick links to server diagnostics (`/api/sentry-check`)
+
+These helpers are strictly dev-only: the page and routes return 404 in non‑development or when the flag is not set.
+
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 ## API Routes for Convex testing
@@ -50,3 +91,41 @@ See [Next.js deployment docs](https://nextjs.org/docs/app/building-your-applicat
 
 Production deploy trigger 3.
 \nNote: ensure NEXT_PUBLIC_CONVEX_URL is set on Vercel for createChatSession to work in Preview.
+
+
+## PayOS local development (webhook)
+
+PayOS must call your app's webhook on a public URL. When running locally, expose the dev server with a tunnel and register the webhook URL.
+
+1. Start Next.js dev (Turbopack may choose port 3001 if 3000 is taken):
+   - `npm run dev`
+2. Start a tunnel (choose one):
+   - Ngrok: `ngrok http 3001`
+   - Cloudflare: `cloudflared tunnel --url http://localhost:3001`
+3. Copy the public URL and confirm the webhook with the SDK via our helper route:
+   - `curl -X POST https://<public-url>/api/payos/confirm -H "Content-Type: application/json" -d '{"webhookUrl":"https://<public-url>/api/payos/webhook"}'`
+
+Notes:
+- You can also configure the webhook URL in the PayOS dashboard.
+- Payment state is marked paid only after PayOS posts to `/api/payos/webhook` and the SDK verifies the signature.
+- The return page `/payos/return` shows a polling UI that queries `/api/payos/status?orderCode=...` every 3s.
+
+
+### Orders + Webhook (production)
+
+- Convex tables:
+  - orders: user_id, amount, currency, status, provider, orderCode, paymentLinkId, checkoutUrl, description, metadata, created_at, updated_at
+  - payos_events: event_hash, orderCode, received_at, payload (for idempotency)
+- Webhook: /api/payos/webhook
+  - Verifies via SDK, records event idempotently, transitions orders to succeeded/failed
+- Checkout create: /api/checkout/create-order
+  - Creates/reuses pending order, calls PayOS, attaches checkout info, returns checkoutUrl
+- Status polling: /api/payos/status?orderCode=...
+- Reconcile: POST /api/payos/admin/reconcile { olderThanMs?: number }
+
+Operational tips
+- Confirm webhook URL in each environment (use /api/payos/confirm or dashboard)
+- Monitor:
+  - webhook 4xx/5xx rates
+  - orders pending > 15m
+- Secrets required: PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, NEXT_PUBLIC_CONVEX_URL, NEXT_PUBLIC_BASE_URL (optional)

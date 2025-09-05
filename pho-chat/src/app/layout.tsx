@@ -4,9 +4,6 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { AppProviders } from './providers';
 
-import dynamic from 'next/dynamic';
-const AppProviders = dynamic(() => import('./providers').then(m => m.AppProviders), { ssr: false });
-
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
