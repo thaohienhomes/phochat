@@ -1,0 +1,64 @@
+
+
+import { httpAction } from "../_generated/server";
+import { api } from "../_generated/api";
+
+async function hmacSha256Hex(secret: string, payload: string): Promise<string> {
+  const enc = new TextEncoder();
+  // Use WebCrypto API available in Node runtime
+  const key = await (globalThis.crypto as Crypto).subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await (globalThis.crypto as Crypto).subtle.sign("HMAC", key, enc.encode(payload));
+  const bytes = new Uint8Array(sig as ArrayBuffer);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export const revenuecatWebhook = httpAction(async (ctx, request) => {
+  const webhookSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    return new Response(JSON.stringify({ error: "REVENUECAT_WEBHOOK_SECRET is not set" }), { status: 500 });
+  }
+  const signature = request.headers.get("x-revenuecat-signature");
+  if (!signature) {
+    return new Response(JSON.stringify({ error: "Webhook signature is missing" }), { status: 400 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const payload = JSON.stringify(body);
+  const computedSignature = await hmacSha256Hex(webhookSecret, payload);
+  if (signature !== computedSignature) {
+    return new Response(JSON.stringify({ error: "Webhook signature does not match" }), { status: 401 });
+  }
+
+  try {
+    const { event } = body || {};
+    const { app_user_id, entitlements } = event || {};
+
+    // Map RevenueCat app_user_id to our stored user.
+    let user = null as any;
+    if (app_user_id) {
+      user = await ctx.runQuery(api.users.getUserByClerkOrToken, { id: app_user_id });
+    }
+
+    if (!user) {
+      return new Response(JSON.stringify({ error: "User not found" }), { status: 404 });
+    }
+
+    const tier = entitlements?.pro ? "pro" : "free";
+    await ctx.runMutation(api.users.setTierById, { userId: user._id, tier });
+
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status: 500 });
+  }
+});
+
+
+

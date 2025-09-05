@@ -10,7 +10,7 @@ on:
       baseUrl:
         description: "AI Gateway Base URL"
         required: false
-        default: "https://ai-gateway.vercel.sh/v1"
+        default: "https://ai-gateway.vercel.sh/v1/openai"
       targets:
         description: "Comma-separated targets: production,preview,development"
         required: false
@@ -75,9 +75,11 @@ jobs:
             echo "Upserting $key at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
             local existing ids
             existing=$(list_envs)
-            ids=$(echo "$existing" | jq -r --arg K "$key" '.envs[] | select(.key==$K) | .id')
+            # Only delete envs that match both key and target to be safe
+            ids=$(echo "$existing" | jq -r --arg K "$key" --argjson TARGETS "$TARGETS_JSON" '
+              .envs[] | select(.key==$K) | select(any($TARGETS[]; . as $t | index($t))) | .id')
             if [[ -n "$ids" ]]; then
-              echo "$key exists; deleting old entries"
+              echo "$key exists; deleting old entries for selected targets only"
               while IFS= read -r id; do
                 [[ -z "$id" ]] && continue
                 delete_env_by_id "$id"

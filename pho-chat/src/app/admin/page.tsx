@@ -1,4 +1,7 @@
 "use client";
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";

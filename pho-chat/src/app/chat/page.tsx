@@ -1,4 +1,7 @@
 "use client";
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
@@ -12,9 +15,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 import Link from "next/link";
-import { useRevenueCat } from "@/components/providers/revenuecat-provider";
+import { Purchases } from "@revenuecat/purchases-js";
+import { RcPackage, extractPackages, isProFromEntitlements } from "@/lib/revenuecat";
+import { toChatSessionId } from "@/lib/ids";
 
 // Types (lightweight)
 type ChatMessage = { id: string; role: string; content: string; createdAt: number };
@@ -27,8 +32,8 @@ const MODELS = [
 
 function SessionMessages({ sessionId }: { sessionId: string | null }) {
   const session = useQuery(
-    api.functions.getChatSession.getChatSession as any,
-    (sessionId ? { sessionId } : "skip") as any
+    api.functions.getChatSession.getChatSession,
+    sessionId ? { sessionId } : "skip"
   );
   const loading = sessionId && !session;
   const messages: ChatMessage[] = (session as any)?.messages ?? [];
@@ -74,18 +79,58 @@ function ChatPageInner() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { user } = useUser();
   const storeUser = useMutation(api.users.storeUser);
-  const { products, isPro, purchasePackage } = useRevenueCat();
+
+
+  const [products, setProducts] = React.useState<RcPackage[]>([]);
+  const [isPro, setIsPro] = React.useState(false);
+
+  React.useEffect(() => {
+    const initRevenueCat = async () => {
+      if (user && typeof window !== 'undefined') {
+        const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
+        if (!apiKey) return;
+        const appUserId = user.id || (Purchases as any).generateRevenueCatAnonymousAppUserId?.();
+        const purchases = Purchases.configure({ apiKey, appUserId });
+        const offerings = await purchases.getOfferings();
+        setProducts(extractPackages(offerings));
+        const customerInfo = await purchases.getCustomerInfo();
+        setIsPro(isProFromEntitlements(customerInfo?.entitlements?.active));
+      }
+    };
+    initRevenueCat();
+  }, [user]);
+
+  const purchasePackage = async (pack: RcPackage) => {
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
+      if (!apiKey) return;
+      const appUserId = user?.id || (Purchases as any).generateRevenueCatAnonymousAppUserId?.();
+      const purchases = Purchases.configure({ apiKey, appUserId });
+      const result = await purchases.purchase({ rcPackage: pack as any });
+      if (isProFromEntitlements(result?.customerInfo?.entitlements?.active)) {
+        setIsPro(true);
+      }
+    } catch (e) {
+      if (e && typeof e === 'object' && !(e as any).userCancelled) {
+        console.log(e);
+      }
+    }
+  };
 
   React.useEffect(() => {
     // If the user is signed in and we haven't stored them yet,
-    // do so now.
-    if (isAuthenticated && !isLoading) {
-      storeUser({});
+    // do so now, linking Clerk user id for RevenueCat mapping.
+    if (isAuthenticated && !isLoading && user) {
+      storeUser({ clerkUserId: user.id });
     }
-  }, [isAuthenticated, isLoading, storeUser]);
+  }, [isAuthenticated, isLoading, user, storeUser]);
+
 
   const tier = useQuery(api.users.getTier, isAuthenticated ? {} : "skip");
-  const chatHistory = useQuery(api.functions.sendMessage.getChatHistoryForSession, sessionId ? { sessionId } : "skip");
+  const chatHistory = useQuery(
+    api.functions.sendMessage.getChatHistoryForSession,
+    sessionId ? { sessionId: toChatSessionId(sessionId) } : "skip"
+  );
 
   // Guard to prevent rapid double-submits
   const sendGuardRef = React.useRef(false);
@@ -147,8 +192,8 @@ function ChatPageInner() {
   }
 
   // Mutations
-  const createSessionMut = useMutation(api.functions.createChatSession.createChatSession as any);
-  const sendMessageMut = useMutation(api.functions.sendMessage.sendMessage as any);
+  const createSessionMut = useMutation(api.functions.createChatSession.createChatSession);
+  const sendMessageMut = useMutation(api.functions.sendMessage.sendMessage);
 
   React.useEffect(() => {
     if (!sessionId && initialSessionId) setSessionId(initialSessionId);
@@ -160,7 +205,7 @@ function ChatPageInner() {
     try {
       setCreating(true);
       setError(null);
-      const id = await createSessionMut({ userId: user.id, model });
+      const id = await createSessionMut({ model });
       console.log("[Chat] createChatSession result", id);
       setSessionId(String(id));
     } catch (e: any) {
@@ -191,7 +236,7 @@ function ChatPageInner() {
       let sid = sessionId;
       if (!sid) {
         try {
-          const id = await createSessionMut({ userId: user.id, model });
+          const id = await createSessionMut({ model });
           console.log("[Chat] Auto-created session", id);
           sid = String(id);
           setSessionId(sid);
@@ -209,7 +254,7 @@ function ChatPageInner() {
         createdAt: Date.now(),
       };
       console.log("[Chat] sendMessage user", userMessage);
-      await sendMessageMut({ sessionId: sid as any, message: userMessage as any });
+      await sendMessageMut({ sessionId: toChatSessionId(sid), message: userMessage });
 
       // Stream AI response
       abortRef.current?.abort();
@@ -257,7 +302,7 @@ function ChatPageInner() {
         createdAt: Date.now(),
       };
       console.log("[Chat] sendMessage assistant", { length: acc.length });
-      await sendMessageMut({ sessionId: sessionId as any, message: assistantMessage as any });
+      await sendMessageMut({ sessionId: toChatSessionId(sid), message: assistantMessage });
       setInput("");
       setStreamingText("");
     } catch (e: any) {
@@ -290,9 +335,9 @@ function ChatPageInner() {
                 ))}
               </SelectContent>
             </Select>
-            {!isPro && products.map((pack) => (
+            {!isPro && products.map((pack: RcPackage) => (
               <Button key={pack.identifier} onClick={() => purchasePackage(pack)}>
-                Upgrade to {pack.product.title}
+                Upgrade to {pack.webBillingProduct?.title || pack.rcBillingProduct?.title || 'Pro'}
               </Button>
             ))}
             {tier === "team" && (
@@ -398,3 +443,4 @@ export default function ChatPage() {
     </React.Suspense>
   );
 }
+

@@ -20,7 +20,7 @@ on:
       ai_base_url:
         description: "AI Gateway Base URL to set when syncing envs"
         required: false
-        default: "https://ai-gateway.vercel.sh/v1"
+        default: "https://ai-gateway.vercel.sh/v1/openai"
       convex_url:
         description: "Convex deployment URL to set as NEXT_PUBLIC_CONVEX_URL when syncing envs"
         required: false
@@ -260,7 +260,7 @@ jobs:
           echo "POST /api/ai/stream => $code (expected 200)"
           if [[ "$code" != "200" ]]; then echo "::error::POST /api/ai/stream failed"; fail=1; fi
           # Optional Convex route (skip failure): /api/createChatSession
-          code=$(curl -sS -o /dev/null -w "%{http_code}" -L -H "Content-Type: application/json" "${EXTRA_OPTS[@]}" -d '{"userId":"verify-user","model":"gpt-4o-mini"}' -X POST "$(with_token_url "$BASE/api/createChatSession")" || echo 000)
+          code=$(curl -sS -o /dev/null -w "%{http_code}" -L -H "Content-Type: application/json" "${EXTRA_OPTS[@]}" -d '{"model":"gpt-4o-mini"}' -X POST "$(with_token_url "$BASE/api/createChatSession")" || echo 000)
           echo "POST /api/createChatSession => $code (expected 200 if Convex configured)"
           if [[ "$code" != "200" ]]; then echo "::warning::createChatSession returned $code; ensure NEXT_PUBLIC_CONVEX_URL set for Preview"; fi
           if [[ $fail -ne 0 ]]; then

@@ -1,30 +1,30 @@
-import nextPlugin from "@next/eslint-plugin-next";
-import prettierPlugin from "eslint-plugin-prettier";
+import nextPlugin from '@next/eslint-plugin-next';
+import prettierPlugin from 'eslint-plugin-prettier';
 
 const eslintConfig = [
   {
     plugins: {
-      "@next/next": nextPlugin,
+      '@next/next': nextPlugin,
     },
     rules: {
       ...nextPlugin.configs.recommended.rules,
-      ...nextPlugin.configs["core-web-vitals"].rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
     },
   },
   {
     ignores: [
-      "node_modules/**",
-      ".next/**",
-      "out/**",
-      "build/**",
-      "next-env.d.ts",
-      "convex/_generated/**",
-      "convex/functions/_generated/**",
+      'node_modules/**',
+      '.next/**',
+      'out/**',
+      'build/**',
+      'next-env.d.ts',
+      'convex/_generated/**',
+      'convex/functions/_generated/**',
     ],
   },
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
   {
@@ -32,7 +32,7 @@ const eslintConfig = [
       prettier: prettierPlugin,
     },
     rules: {
-      "prettier/prettier": "error",
+      'prettier/prettier': 'error',
     },
   },
 ];

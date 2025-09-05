@@ -1,5 +1,5 @@
-const BASE = 'https://pho-chat-by7v3tw38-thaohienhomes-gmailcoms-projects.vercel.app';
-const TOKEN = 'eHAj5rateRnkDjbtdxG6Pn9iAk7qugmD';
+const BASE = process.env.BASE;
+const TOKEN = process.env.VERCEL_BYPASS_TOKEN;
 
 async function main() {
   const headers = {
@@ -15,7 +15,7 @@ async function main() {
   const r2 = await fetch(`${BASE}/api/createChatSessionDiag`, {
     method: 'POST',
     headers: hjson,
-    body: JSON.stringify({ userId: 'verify-user', model: 'gpt-4o-mini' }),
+    body: JSON.stringify({ model: 'gpt-4o-mini' }),
   });
   const t2 = await r2.text();
   console.log('POST /api/createChatSessionDiag', r2.status, t2);
