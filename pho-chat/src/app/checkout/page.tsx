@@ -52,6 +52,11 @@ export default function CheckoutPage() {
         <Button className="bg-emerald-600 text-white" onClick={startPayment} disabled={loading}>
           {loading ? "Redirecting..." : "Pay with PayOS (QR / Napas 24/7)"}
         </Button>
+        {loading && (
+          <p className="text-xs text-muted-foreground">
+            Please complete your QR/Napas 24/7 payment in the PayOS window. This page will update after confirmation.
+          </p>
+        )}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </div>
