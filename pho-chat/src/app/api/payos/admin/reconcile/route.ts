@@ -8,10 +8,11 @@ export const runtime = "nodejs";
 // POST /api/payos/admin/reconcile { olderThanMs?: number }
 export async function POST(req: NextRequest) {
   try {
-    // Simple admin guard via shared secret; optionally support query param for manual calls
+    // Admin guard: require token in production; allow dev without token for local UI button
     const provided = req.headers.get("x-admin-token") || req.nextUrl.searchParams.get("token");
     const expected = process.env.ADMIN_RECONCILE_TOKEN;
-    if (!expected || provided !== expected) {
+    const isProd = process.env.NODE_ENV === "production";
+    if (isProd && (!expected || provided !== expected)) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 

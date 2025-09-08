@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/payos/admin/reconcile-cron?token=__ADMIN_RECONCILE_TOKEN__",
+      "schedule": "*/30 * * * *"
+    }
+  ]
+}
+

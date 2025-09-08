@@ -15,6 +15,7 @@ export default defineSchema({
 
   chat_sessions: defineTable({
     user_id: v.id("users"), // FK to users table
+    title: v.optional(v.string()), // optional user-specified title
     messages: v.array(
       v.object({
         id: v.string(),

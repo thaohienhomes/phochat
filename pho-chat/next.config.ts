@@ -5,8 +5,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   images: {
     remotePatterns: [
-      // Add domains as needed
-      // { protocol: "https", hostname: "images.example.com" },
+      { protocol: "https", hostname: "i.pravatar.cc" },
     ],
   },
   // Ignore lint and type errors during production builds to unblock deploys.

@@ -3,6 +3,8 @@ export { metadata, dynamic, revalidate } from './metadata';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { AppProviders } from './providers';
+import dynamic from 'next/dynamic';
+const ClientHeader = dynamic(() => import('./_app-header').then(m => m.AppHeader), { ssr: false });
 
 
 const geistSans = Geist({
@@ -24,7 +26,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <AppProviders>{children}</AppProviders>
+        <AppProviders>
+          {/* Global app header with auth controls (client-only to avoid SSR provider mismatch) */}
+          <ClientHeader />
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

@@ -53,7 +53,16 @@ export async function POST(req: NextRequest) {
 
     // 2) Create PayOS payment link
     // Split public vs internal base URLs in dev to avoid loopback via ngrok
-    const publicOrigin = process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin;
+    // Derive a clean public origin, even if env accidentally contains a path
+    const configuredPublic = process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin;
+    let publicOrigin: string;
+    try {
+      publicOrigin = new URL(configuredPublic).origin; // strips any path like /api/payos/webhook
+    } catch {
+      publicOrigin = new URL(req.url).origin;
+    }
+
+    // Internal origin for server-to-server calls during dev
     let internalOrigin = process.env.INTERNAL_BASE_URL || new URL(req.url).origin;
     if (process.env.NODE_ENV !== "production") {
       internalOrigin = process.env.INTERNAL_BASE_URL || "http://127.0.0.1:3000";

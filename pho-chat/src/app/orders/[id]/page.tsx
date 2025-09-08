@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function StatusBadge({ status }: { status?: string }) {
   const colors: Record<string, string> = {
@@ -20,6 +21,8 @@ export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const orderId = params?.id as string | undefined;
+  const userTier = useQuery(api.users.getTier, {} as any) as string | null;
+
   const order = useQuery(api.orders.orderById, orderId ? ({ orderId: orderId as any } as any) : ("skip" as any)) as any;
 
   const [busy, setBusy] = React.useState(false);
@@ -43,7 +46,21 @@ export default function OrderDetailPage() {
   return (
     <div className="mx-auto max-w-2xl p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Order Details</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold">Order Details</h1>
+          {userTier && (userTier === "pro" || userTier === "team") && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center text-xs rounded-full border px-2 py-0.5 text-green-700 bg-green-50 dark:text-green-200 dark:bg-green-900/20 cursor-default">
+                  {userTier === "team" ? "Team" : "Pro"}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-xs">You're on {userTier}. Enjoy premium AI models and higher limits.</div>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <StatusBadge status={status} />
           <Button variant="outline" onClick={() => router.push("/orders")}>Back</Button>

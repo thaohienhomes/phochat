@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAIBaseURL, getAIKey } from "@/lib/aiConfig";
+import { auth } from "@clerk/nextjs/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    // Require auth when Clerk is configured
+    if (process.env.CLERK_SECRET_KEY) {
+      const { userId } = await auth();
+      if (!userId) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const { model = "gpt-4o-mini", prompt = "Say hello in one short sentence." } = await req.json();
     const resp = await fetch(`${(baseURL?.replace(/\/$/, "")) || "https://ai-gateway.vercel.sh/v1"}/chat/completions`, {
       method: "POST",

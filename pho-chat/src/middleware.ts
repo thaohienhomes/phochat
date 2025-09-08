@@ -1,3 +1,4 @@
+import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -23,14 +24,13 @@ function allow(key: string) {
   return true;
 }
 
-export function middleware(req: NextRequest) {
+const hasClerk = !!process.env.CLERK_SECRET_KEY;
+
+function handleCommon(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
   // Protect AI endpoints and createChatSession
-  const protectedPaths = [
-    "/api/ai/stream",
-    "/api/ai/test",
-    "/api/createChatSession",
-  ];
+  const protectedPaths = ["/api/ai/stream", "/api/ai/test", "/api/createChatSession"];
   if (protectedPaths.includes(pathname)) {
     const ip = req.ip ?? req.headers.get("x-forwarded-for") ?? "anon";
     const key = `${ip}:${pathname}`;
@@ -41,14 +41,45 @@ export function middleware(req: NextRequest) {
       });
     }
   }
+
+  // Redirect legacy /chat routes to the root chat interface
+  const url = req.nextUrl.clone();
+  if (pathname === "/chat" || pathname === "/chat/") {
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+  if (pathname.startsWith("/chat/")) {
+    const parts = pathname.split("/");
+    const sessionId = parts[2]; // after "/chat"
+    url.pathname = "/";
+    if (sessionId) url.searchParams.set("sessionId", sessionId);
+    return NextResponse.redirect(url);
+  }
+
   return NextResponse.next();
 }
 
+const withClerk = hasClerk
+  ? clerkMiddleware(
+      {
+        publicRoutes: [
+          "/",
+          "/checkout",
+          "/orders",
+          "/settings",
+          "/payos(.*)",
+          "/api/payos(.*)",
+          "/api/health(.*)",
+        ],
+      },
+      (_auth, req: NextRequest) => handleCommon(req)
+    )
+  : ((req: NextRequest) => handleCommon(req));
+
+export default withClerk as any;
+
 export const config = {
-  matcher: [
-    "/api/ai/stream",
-    "/api/ai/test",
-    "/api/createChatSession",
-  ],
+  // Apply middleware broadly and include API routes; exclude static assets
+  matcher: ["/((?!_next|.*\\..*).*)", "/(api|trpc)(.*)"],
 };
 

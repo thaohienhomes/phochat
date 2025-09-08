@@ -57,6 +57,28 @@ export async function POST(req: NextRequest) {
     await convex.mutation(api.orders.setStatusByOrderCode, { orderCode: verified.orderCode, status });
     logger.info("Order status updated from webhook", { orderCode: verified.orderCode, status });
 
+    // On successful payment, upgrade the corresponding user to Pro
+    if (status === "succeeded") {
+      try {
+        const order = await convex.query(api.orders.orderByOrderCode, { orderCode: verified.orderCode });
+        const clerkUserId = (order as any)?.user_id as string | undefined;
+        if (clerkUserId) {
+          const user = await convex.query(api.users.getUserByClerkOrToken, { id: clerkUserId });
+          const convexUserId = (user as any)?._id;
+          if (convexUserId) {
+            await convex.mutation(api.users.setTierById, { userId: convexUserId, tier: "pro" } as any);
+            logger.info("User upgraded to Pro via PayOS", { clerkUserId, orderCode: verified.orderCode });
+          } else {
+            logger.info("User not found for upgrade", { clerkUserId });
+          }
+        } else {
+          logger.info("Order has no user_id; cannot upgrade tier", { orderCode: verified.orderCode });
+        }
+      } catch (err: any) {
+        logger.error?.("Failed to upgrade user to Pro", { orderCode: verified.orderCode, error: err?.message || String(err) });
+      }
+    }
+
     return new Response(JSON.stringify({ received: true }), { status: 200 });
   } catch (e: any) {
     logger.error("Webhook error", { error: e?.message || String(e) });

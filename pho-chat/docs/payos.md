@@ -9,8 +9,10 @@ Set these in your deployment (and `.env.local` for local dev):
 - `PAYOS_CLIENT_ID`
 - `PAYOS_API_KEY`
 - `PAYOS_CHECKSUM_KEY`
+- `NEXT_PUBLIC_BASE_URL` (public site origin used to compose return/cancel URLs)
 - `NEXT_PUBLIC_CONVEX_URL` (Convex HTTP URL)
-- `ADMIN_RECONCILE_TOKEN` (shared secret to protect admin reconcile API)
+- `ADMIN_RECONCILE_TOKEN` (shared secret to protect admin endpoints)
+- `CRON_SECRET` (optional but recommended; Vercel Cron will send Authorization: Bearer `$CRON_SECRET`)
 
 ## Key endpoints
 
@@ -53,18 +55,39 @@ Set these in your deployment (and `.env.local` for local dev):
 
 ## Scheduled reconcile (production)
 
-- Endpoint: POST /api/payos/admin/reconcile-cron
-- Auth: header x-admin-token: ADMIN_RECONCILE_TOKEN
+- Endpoints:
+  - POST /api/payos/admin/reconcile-cron (Authorization header or x-admin-token)
+  - GET  /api/payos/admin/reconcile-cron (Authorization header or x-admin-token)
 - Default: marks orders pending for >15 minutes as expired (idempotent)
-- Suggested schedule: every 30 minutes via your platform's scheduler (e.g., Vercel Cron)
+- Suggested schedule: every 30 minutes via Vercel Cron
 
-Example (curl):
+Example (POST curl):
 
 ```
 curl -X POST \
   -H "x-admin-token: $ADMIN_RECONCILE_TOKEN" \
   https://<your-domain>/api/payos/admin/reconcile-cron
 ```
+
+### Vercel Cron setup (vercel.json)
+
+Add `vercel.json` to the project root (already included in this repo) and deploy. Vercel will register the job automatically.
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/payos/admin/reconcile-cron",
+      "schedule": "*/30 * * * *"
+    }
+  ]
+}
+```
+
+Security:
+- Set `CRON_SECRET` in Vercel → Project → Settings → Environment Variables.
+- Vercel will call the path with `Authorization: Bearer $CRON_SECRET`.
+- Our cron route also allows `x-admin-token: ADMIN_RECONCILE_TOKEN` and `?token=...` for manual runs, but using `CRON_SECRET` is recommended.
 
 ## Base URL setup
 
