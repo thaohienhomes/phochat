@@ -26,7 +26,8 @@ try {
 export const logger = {
   info(msg: string, ctx?: Ctx) {
     const payload = ctx ? sanitize(ctx) : undefined;
-    console.log("[PayOS]", msg, payload || "");
+    const printable = payload ? JSON.stringify(payload) : "";
+    console.log("[PayOS]", msg, printable);
     try {
       if (Sentry && Sentry.captureMessage) {
         Sentry.captureMessage(msg, { level: "info", extra: payload });
