@@ -13,6 +13,7 @@ permissions:
 jobs:
   chromatic:
     name: Upload Storybook to Chromatic
+    if: ${{ secrets.CHROMATIC_PROJECT_TOKEN != '' && hashFiles('pho-chat/.storybook/**') != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
