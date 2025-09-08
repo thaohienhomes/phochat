@@ -36,7 +36,8 @@ export const logger = {
   },
   error(msg: string, ctx?: Ctx) {
     const payload = ctx ? sanitize(ctx) : undefined;
-    console.error("[PayOS]", msg, payload || "");
+    const printable = payload ? JSON.stringify(payload) : "";
+    console.error("[PayOS]", msg, printable);
     try {
       if (Sentry && Sentry.captureException) {
         const err = new Error(msg);
