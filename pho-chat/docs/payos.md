@@ -50,3 +50,27 @@ Set these in your deployment (and `.env.local` for local dev):
 - Official Node SDK used: `@payos/node` (docs: https://payos.vn/docs/sdks/intro)
 - Swapping to a different SDK in the future is isolated to `src/lib/payos.ts`.
 
+
+## Scheduled reconcile (production)
+
+- Endpoint: POST /api/payos/admin/reconcile-cron
+- Auth: header x-admin-token: ADMIN_RECONCILE_TOKEN
+- Default: marks orders pending for >15 minutes as expired (idempotent)
+- Suggested schedule: every 30 minutes via your platform's scheduler (e.g., Vercel Cron)
+
+Example (curl):
+
+```
+curl -X POST \
+  -H "x-admin-token: $ADMIN_RECONCILE_TOKEN" \
+  https://<your-domain>/api/payos/admin/reconcile-cron
+```
+
+## Base URL setup
+
+- In development:
+  - NEXT_PUBLIC_BASE_URL = your public tunnel (ngrok) for return/polling
+  - INTERNAL_BASE_URL = http://127.0.0.1:3000 for internal server-to-server calls
+- In production:
+  - Set both to your canonical domain
+

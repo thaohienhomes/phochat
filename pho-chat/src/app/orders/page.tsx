@@ -9,6 +9,7 @@ export default function OrdersPage() {
   const [status, setStatus] = React.useState<string | undefined>(undefined);
   const orders = useQuery(api.orders.listRecent, { status, limit: 50 }) || [];
   const [busy, setBusy] = React.useState(false);
+  const [lastManualReconcileAt, setLastManualReconcileAt] = React.useState<number | null>(null);
 
   async function reconcile() {
     try {
@@ -19,7 +20,12 @@ export default function OrdersPage() {
         body: JSON.stringify({ olderThanMs: 15 * 60 * 1000 }),
       });
       const data = await res.json();
-      alert(res.ok ? `Reconciled: ${data?.count}` : (data?.error || "Reconcile failed"));
+      if (res.ok) {
+        setLastManualReconcileAt(Date.now());
+        alert(`Reconciled: ${data?.count}`);
+      } else {
+        alert(data?.error || "Reconcile failed");
+      }
     } finally {
       setBusy(false);
     }
@@ -45,6 +51,10 @@ export default function OrdersPage() {
           </Button>
         </div>
       </div>
+
+      {lastManualReconcileAt && (
+        <p className="text-xs text-muted-foreground">Last manual reconcile: {new Date(lastManualReconcileAt).toLocaleString()}</p>
+      )}
 
       <div className="overflow-auto rounded border">
         <table className="w-full text-sm">
