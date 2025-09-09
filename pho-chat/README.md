@@ -88,8 +88,53 @@ To learn more about Next.js, take a look at the following resources:
 
 See [Next.js deployment docs](https://nextjs.org/docs/app/building-your-application/deploying) and ensure environment variables are set in Vercel.
 
+## Production Setup (PayOS + Email + Sentry)
 
-Production deploy trigger 3.
+Follow this checklist to prepare a stable production deployment.
+
+1) Configure environment variables (Vercel → Project Settings → Environment)
+- PayOS
+  - PAYOS_CLIENT_ID
+  - PAYOS_API_KEY
+  - PAYOS_CHECKSUM_KEY
+- Email (Resend)
+  - RESEND_API_KEY
+  - EMAIL_FROM (e.g., "Pho.Chat <noreply@pho.chat>")
+- Convex
+  - NEXT_PUBLIC_CONVEX_URL (prod deployment URL)
+- App URLs
+  - NEXT_PUBLIC_BASE_URL (e.g., https://yourdomain.com)
+- Observability
+  - SENTRY_DSN (and optional NEXT_PUBLIC_SENTRY_DSN)
+  - SENTRY_ENVIRONMENT=production
+  - SENTRY_DEBUG=false
+  - SENTRY_TRACES_SAMPLE_RATE and NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE (tune as needed)
+- Admin ops
+  - ADMIN_RECONCILE_TOKEN (already set per project notes)
+
+2) Set PayOS webhook URL (in PayOS dashboard)
+- Webhook: https://YOUR_DOMAIN/api/payos/webhook
+- The app verifies signatures with the official SDK and uses idempotency to avoid duplicates.
+
+3) Return/Cancel URLs for checkout
+- The checkout create route composes return/cancel using your site base URL.
+- Ensure NEXT_PUBLIC_BASE_URL reflects the production domain.
+
+4) Smoke test after deploy
+- Create a small-amount test order, complete via QR.
+- Verify:
+  - User sees pending state on return, then success after refresh/polling.
+  - Webhook marks order succeeded/failed.
+  - Success/failure email is recorded in Admin · Emails and delivered.
+  - Sentry shows breadcrumbs with no unexpected errors.
+
+5) Local/dev reference
+- Copy .env.example → .env.local and fill values for local testing.
+- For local webhook tests, expose the dev server with a tunnel and point PayOS to /api/payos/webhook.
+
+
+
+Production deploy trigger 4.
 \nNote: ensure NEXT_PUBLIC_CONVEX_URL is set on Vercel for createChatSession to work in Preview.
 
 
