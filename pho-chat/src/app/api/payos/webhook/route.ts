@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
     if (!convexUrl) {
-      logger.warn?.("Convex URL missing; acknowledging webhook without DB update", { orderCode: verified.orderCode });
+      logger.info("Convex URL missing; acknowledging webhook without DB update", { orderCode: verified.orderCode });
       return new Response(JSON.stringify({ received: true, noDb: true }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
 
