@@ -57,6 +57,7 @@ export const internalHandleWebhook = internalMutation({
           status: "succeeded",
           provider: "revenuecat",
           created_at: Date.now(),
+          receipts: body,
         });
       }
     } else if (provider === "qr") {
@@ -71,6 +72,7 @@ export const internalHandleWebhook = internalMutation({
           status,
           provider: "qr",
           created_at: Date.now(),
+          receipts: body,
         });
       }
     }
