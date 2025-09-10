@@ -50,9 +50,10 @@ function SessionMessages({ sessionId }: { sessionId: string | null }) {
         <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
       )}
       {!loading && messages.map((m) => (
-        <div key={m.id} className="text-sm">
-          <span className="font-medium mr-2">{m.role}:</span>
-          <span className="whitespace-pre-wrap">{m.content}</span>
+        <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+            {m.content}
+          </div>
         </div>
       ))}
     </>
@@ -365,9 +366,10 @@ function ChatPageInner() {
         <div ref={scrollRef} className="h-[55vh] overflow-y-auto rounded-md border p-3 space-y-3 bg-background">
           <SessionMessages sessionId={sessionId} />
           {streamingText && (
-            <div className="text-sm">
-              <span className="font-medium mr-2">assistant:</span>
-              <span className="whitespace-pre-wrap">{streamingText}</span>
+            <div className="flex justify-start">
+              <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap bg-muted text-foreground">
+                {streamingText}
+              </div>
             </div>
           )}
         </div>

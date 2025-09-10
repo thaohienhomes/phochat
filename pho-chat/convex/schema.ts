@@ -14,7 +14,7 @@ export default defineSchema({
     .index("by_clerk", ["clerkUserId"]),
 
   chat_sessions: defineTable({
-    user_id: v.id("users"), // FK to users table
+    user_id: v.union(v.id("users"), v.string()), // Allow legacy string ids and new FK
     messages: v.array(
       v.object({
         id: v.string(),
