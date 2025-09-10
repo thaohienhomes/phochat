@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     try {
       raw = await req.text();
     } catch (err: any) {
-      logger.warn?.('Webhook body read failed; treating as healthcheck', { error: err?.message || String(err) });
+      logger.info('Webhook body read failed; treating as healthcheck', { error: err?.message || String(err) });
       return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
     }
     if (!raw?.trim() || !contentType.includes('application/json')) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     try {
       body = JSON.parse(raw);
     } catch (err: any) {
-      logger.warn?.('Webhook JSON parse failed; treating as healthcheck', { error: err?.message || String(err) });
+      logger.info('Webhook JSON parse failed; treating as healthcheck', { error: err?.message || String(err) });
       return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
     }
 
