@@ -49,26 +49,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || "");
-
-    // Idempotency: record event first; if already processed, exit early
-    const eventHash = stableHash({ orderCode: verified.orderCode, code: verified.code, id: (verified as any)?.id });
-    const isNew = await convex.mutation(api.orders.recordEventIfNew, {
-      eventHash,
-      orderCode: verified.orderCode,
-      payload: verified,
-    });
-    if (!isNew) {
-      logger.info("Webhook duplicate event", { orderCode: verified.orderCode, eventHash });
-      return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200, headers: { 'content-type': 'application/json' } });
+    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+    if (!convexUrl) {
+      logger.warn?.("Convex URL missing; acknowledging webhook without DB update", { orderCode: verified.orderCode });
+      return new Response(JSON.stringify({ received: true, noDb: true }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
 
-    // Update order status based on webhook
-    const status = deriveOrderStatus(verified as any);
-    await convex.mutation(api.orders.setStatusByOrderCode, { orderCode: verified.orderCode, status });
-    logger.info("Order status updated from webhook", { orderCode: verified.orderCode, status });
+    try {
+      const convex = new ConvexHttpClient(convexUrl);
 
-    return new Response(JSON.stringify({ received: true }), { status: 200, headers: { 'content-type': 'application/json' } });
+      // Idempotency: record event first; if already processed, exit early
+      const eventHash = stableHash({ orderCode: verified.orderCode, code: verified.code, id: (verified as any)?.id });
+      const isNew = await convex.mutation(api.orders.recordEventIfNew, {
+        eventHash,
+        orderCode: verified.orderCode,
+        payload: verified,
+      });
+      if (!isNew) {
+        logger.info("Webhook duplicate event", { orderCode: verified.orderCode, eventHash });
+        return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+
+      // Update order status based on webhook
+      const status = deriveOrderStatus(verified as any);
+      await convex.mutation(api.orders.setStatusByOrderCode, { orderCode: verified.orderCode, status });
+      logger.info("Order status updated from webhook", { orderCode: verified.orderCode, status });
+
+      return new Response(JSON.stringify({ received: true }), { status: 200, headers: { 'content-type': 'application/json' } });
+    } catch (err: any) {
+      logger.error?.("Convex update failed; acknowledging webhook", { orderCode: verified.orderCode, error: err?.message || String(err) });
+      return new Response(JSON.stringify({ received: true, dbError: true }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
   } catch (e: any) {
     logger.error("Webhook error", { error: e?.message || String(e) });
     return new Response(JSON.stringify({ error: e?.message || "Webhook error" }), { status: 500, headers: { 'content-type': 'application/json' } });
