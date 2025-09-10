@@ -79,4 +79,22 @@ describe('PayOS webhook route', () => {
     // Only one mutation call (recordEventIfNew), no status update
     expect(mutationMock).toHaveBeenCalledTimes(1);
   });
+  it('returns 200 for empty POST (healthcheck)', async () => {
+    const res = await POST(new Request('http://localhost/api/payos/webhook', { method: 'POST' }) as any);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toMatchObject({ ok: true, healthcheck: true });
+  });
+
+  it('returns 200 for non-JSON POST (healthcheck)', async () => {
+    const res = await POST(new Request('http://localhost/api/payos/webhook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: 'ping',
+    }) as any);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toMatchObject({ ok: true, healthcheck: true });
+  });
+
 });

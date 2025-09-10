@@ -40,17 +40,31 @@ export async function POST(req: NextRequest) {
       });
     }
     // Some dashboards may send a POST without a body just to check liveness.
-    // Be lenient: if JSON parsing fails or body is empty, return 200 OK to allow saving the URL.
-    let body: any = undefined;
+    // Read raw text safely first; if empty or non-JSON, return 200 OK as health check.
+    const contentType = req.headers.get('content-type') || '';
+    let raw = '';
     try {
-      body = await req.json();
+      raw = await req.text();
     } catch (parseErr: any) {
-      Sentry.addBreadcrumb?.({ category: 'payos.webhook', level: 'warning', message: 'Webhook JSON parse failed; treating as health check', data: { ip, error: parseErr?.message || String(parseErr) } });
+      Sentry.addBreadcrumb?.({ category: 'payos.webhook', level: 'warning', message: 'Webhook body read failed; treating as health check', data: { ip, error: parseErr?.message || String(parseErr) } });
       return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
     }
 
-    if (!body || (typeof body === 'object' && Object.keys(body).length === 0)) {
+    if (!raw || raw.trim().length === 0) {
       // Treat as health-check POST without body
+      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
+    }
+
+    if (!contentType.includes('application/json')) {
+      // Non-JSON ping from dashboard; acknowledge as healthcheck
+      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
+    }
+
+    let body: any = undefined;
+    try {
+      body = JSON.parse(raw);
+    } catch (parseErr: any) {
+      Sentry.addBreadcrumb?.({ category: 'payos.webhook', level: 'warning', message: 'Webhook JSON parse failed; treating as health check', data: { ip, error: parseErr?.message || String(parseErr), rawPreview: raw.slice(0, 200) } });
       return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
     }
 
