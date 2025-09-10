@@ -1,0 +1,17 @@
+# Auto-label configuration for actions/labeler
+
+# Documentation files
+"documentation":
+  - "pho-chat/docs/**"
+
+# Design system and tokens
+"design-system":
+  - "pho-chat/docs/storybook/**"
+  - "pho-chat/docs/design/**"
+
+"tokens":
+  - "pho-chat/docs/design/**"
+  - "scripts/convert-oklch.js"
+  - "scripts/generate-token-mdx.js"
+  - "pho-chat/docs/storybook/foundations/**"
+

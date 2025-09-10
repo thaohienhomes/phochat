@@ -1,0 +1,44 @@
+name: Chromatic Visual Tests
+
+on:
+  pull_request:
+    paths:
+      - 'pho-chat/**'
+      - '.github/workflows/chromatic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromatic:
+    name: Upload Storybook to Chromatic
+    if: ${{ secrets.CHROMATIC_PROJECT_TOKEN != '' && hashFiles('pho-chat/.storybook/**') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm --prefix pho-chat ci
+
+      - name: Generate tokens MDX
+        run: npm --prefix pho-chat run tokens:mdx
+
+      - name: Build Storybook
+        run: npm --prefix pho-chat run storybook:build
+
+      - name: Publish to Chromatic
+        if: ${{ secrets.CHROMATIC_PROJECT_TOKEN != '' }}
+        uses: chromaui/action@v1
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          workingDir: pho-chat
+          storybookBuildDir: storybook-static
+          onlyChanged: true
+

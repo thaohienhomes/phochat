@@ -7,7 +7,8 @@ export function getPayOS() {
   if (!clientId || !apiKey || !checksumKey) {
     throw new Error("Missing PAYOS credentials in environment");
   }
-  return new PayOS({ clientId, apiKey, checksumKey });
+  // @payos/node constructor expects an options object
+  return new PayOS({ clientId, apiKey, checksumKey } as any);
 }
 
 export type CreatePaymentInput = {

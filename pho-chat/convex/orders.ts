@@ -87,6 +87,18 @@ export const statusByOrderCode = query({
   },
 });
 
+export const orderByOrderCode = query({
+  args: { orderCode: v.number() },
+  handler: async (ctx, { orderCode }) => {
+    const row = await ctx.db
+      .query("orders")
+      .withIndex("by_orderCode", (q) => q.eq("orderCode", orderCode))
+      .first();
+    return row ?? null;
+  },
+});
+
+
 export const recordEventIfNew = mutation({
   args: { eventHash: v.string(), orderCode: v.number(), payload: v.any() },
   handler: async (ctx, { eventHash, orderCode, payload }) => {

@@ -1,0 +1,24 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Components/TooltipProvider" />
+
+# TooltipProvider
+
+Provider to configure global tooltip delay.
+
+## Props
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| delayDuration | number | No | 0 | Global tooltip delay (ms) |
+
+## Example
+
+````tsx
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+<Tooltip>
+  <TooltipTrigger asChild><button>Hover</button></TooltipTrigger>
+  <TooltipContent>Hint</TooltipContent>
+</Tooltip>
+````
+

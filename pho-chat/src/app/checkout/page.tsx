@@ -4,6 +4,8 @@ import { useUser } from "@clerk/nextjs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Link from "next/link";
 
 export default function CheckoutPage() {
   const { user } = useUser();
@@ -23,13 +25,15 @@ export default function CheckoutPage() {
           userId: user?.id ?? "web-user",
           amount,
           description,
-          // let server embed the orderId in redirect automatically
+          // let server embed the orderId in returnUrl automatically
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to create order");
-      if (data?.checkoutUrl) window.location.href = data.checkoutUrl;
-      else throw new Error("No checkoutUrl returned");
+      // Redirect to our order detail page for a consistent pending UX
+      if (data?.orderId) window.location.href = `/orders/${data.orderId}`;
+      else if (data?.checkoutUrl) window.location.href = data.checkoutUrl;
+      else throw new Error("No orderId or checkoutUrl returned");
     } catch (e: any) {
       setError(e?.message || String(e));
     } finally {
@@ -53,9 +57,16 @@ export default function CheckoutPage() {
           {loading ? "Redirecting..." : "Pay with PayOS (QR / Napas 24/7)"}
         </Button>
         {loading && (
-          <p className="text-xs text-muted-foreground">
-            Please complete your QR/Napas 24/7 payment in the PayOS window. This page will update after confirmation.
-          </p>
+          <Alert>
+            <AlertTitle>Pending payment…</AlertTitle>
+            <AlertDescription>
+              Please complete your QR/Napas 24/7 payment in the PayOS window. Do not close this tab.
+              <br />
+              You can also
+              <Link className="ml-1 underline text-blue-600" href="/payos/return" target="_blank" rel="noopener noreferrer">view payment status</Link>
+              in a new tab.
+            </AlertDescription>
+          </Alert>
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>

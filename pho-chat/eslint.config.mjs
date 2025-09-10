@@ -1,40 +1,38 @@
+// For more info, see https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
+import storybook from "eslint-plugin-storybook";
+
 import nextPlugin from '@next/eslint-plugin-next';
 import prettierPlugin from 'eslint-plugin-prettier';
 
-const eslintConfig = [
-  {
-    plugins: {
-      '@next/next': nextPlugin,
-    },
-    rules: {
-      ...nextPlugin.configs.recommended.rules,
-      ...nextPlugin.configs['core-web-vitals'].rules,
-    },
+const eslintConfig = [{
+  plugins: {
+    '@next/next': nextPlugin,
   },
-  {
-    ignores: [
-      'node_modules/**',
-      '.next/**',
-      'out/**',
-      'build/**',
-      'next-env.d.ts',
-      'convex/_generated/**',
-      'convex/functions/_generated/**',
-    ],
+  rules: {
+    ...nextPlugin.configs.recommended.rules,
+    ...nextPlugin.configs['core-web-vitals'].rules,
   },
-  {
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-    },
+}, {
+  ignores: [
+    'node_modules/**',
+    '.next/**',
+    'out/**',
+    'build/**',
+    'next-env.d.ts',
+    'convex/_generated/**',
+    'convex/functions/_generated/**',
+  ],
+}, {
+  rules: {
+    '@typescript-eslint/no-explicit-any': 'off',
   },
-  {
-    plugins: {
-      prettier: prettierPlugin,
-    },
-    rules: {
-      'prettier/prettier': 'error',
-    },
+}, {
+  plugins: {
+    prettier: prettierPlugin,
   },
-];
+  rules: {
+    'prettier/prettier': 'error',
+  },
+}, ...storybook.configs["flat/recommended"]];
 
 export default eslintConfig;

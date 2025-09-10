@@ -1,0 +1,27 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Components/Sheet" />
+
+# Sheet
+
+Off-canvas panel built on Radix Dialog.
+
+## Sub-components
+
+- Sheet, SheetTrigger, SheetPortal, SheetOverlay, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription, SheetClose
+
+## Example
+
+````tsx
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+<Sheet>
+  <SheetTrigger asChild><button>Open</button></SheetTrigger>
+  <SheetContent side="right">
+    <SheetHeader>
+      <SheetTitle>Panel</SheetTitle>
+    </SheetHeader>
+    Body
+  </SheetContent>
+</Sheet>
+````
+
