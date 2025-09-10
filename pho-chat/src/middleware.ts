@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
 // Very lightweight in-memory token bucket keyed by IP + path for basic rate limiting
 // Note: In serverless, memory may reset between invocations. This is a best-effort limiter.
@@ -23,15 +24,17 @@ function allow(key: string) {
   return true;
 }
 
-export function middleware(req: NextRequest) {
+// Use Clerk middleware to enable auth() in API routes/pages; also run our rate-limiter.
+export default clerkMiddleware((auth, req: NextRequest) => {
   const { pathname } = req.nextUrl;
-  // Protect AI endpoints and createChatSession
-  const protectedPaths = [
+
+  // Basic rate limiting for selected endpoints
+  const limitedPaths = [
     "/api/ai/stream",
     "/api/ai/test",
     "/api/createChatSession",
   ];
-  if (protectedPaths.includes(pathname)) {
+  if (limitedPaths.includes(pathname)) {
     const ip = req.ip ?? req.headers.get("x-forwarded-for") ?? "anon";
     const key = `${ip}:${pathname}`;
     if (!allow(key)) {
@@ -41,14 +44,19 @@ export function middleware(req: NextRequest) {
       });
     }
   }
+
+  // No explicit protection here; specific routes handle auth in the handler.
   return NextResponse.next();
-}
+});
 
 export const config = {
+  // Ensure Clerk middleware runs on our API routes incl. admin reconcile
   matcher: [
     "/api/ai/stream",
     "/api/ai/test",
     "/api/createChatSession",
+    "/api/admin/(.*)",
+    "/(api|trpc)(.*)",
   ],
 };
 
