@@ -11,7 +11,25 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const contentType = req.headers.get('content-type') || '';
+    let raw = '';
+    try {
+      raw = await req.text();
+    } catch (err: any) {
+      logger.warn?.('Webhook body read failed; treating as healthcheck', { error: err?.message || String(err) });
+      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
+    }
+    if (!raw?.trim() || !contentType.includes('application/json')) {
+      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
+    }
+    let body: any;
+    try {
+      body = JSON.parse(raw);
+    } catch (err: any) {
+      logger.warn?.('Webhook JSON parse failed; treating as healthcheck', { error: err?.message || String(err) });
+      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
+    }
+
     const payos = getPayOS();
     const verified = await payos.webhooks.verify(body as any);
 
