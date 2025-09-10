@@ -11,30 +11,42 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const contentType = req.headers.get('content-type') || '';
+    const contentType = (req.headers.get('content-type') || '').toLowerCase();
     let raw = '';
     try {
       raw = await req.text();
     } catch (err: any) {
       logger.info('Webhook body read failed; treating as healthcheck', { error: err?.message || String(err) });
-      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (!raw?.trim() || !contentType.includes('application/json')) {
-      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     let body: any;
     try {
       body = JSON.parse(raw);
     } catch (err: any) {
       logger.info('Webhook JSON parse failed; treating as healthcheck', { error: err?.message || String(err) });
-      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
 
     const payos = getPayOS();
-    const verified = await payos.webhooks.verify(body as any);
+    let verified: any;
+    try {
+      verified = await payos.webhooks.verify(body as any);
+    } catch (err: any) {
+      logger.info("Webhook verification failed", { level: "warn", error: err?.message || String(err) });
+      return new Response(
+        JSON.stringify({ ok: true, ignored: true, reason: "invalid signature or payload" }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      );
+    }
 
     if (!verified?.orderCode) {
-      return new Response(JSON.stringify({ error: "Invalid webhook data" }), { status: 400 });
+      return new Response(
+        JSON.stringify({ ok: true, ignored: true, reason: "missing orderCode" }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      );
     }
 
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || "");
@@ -48,7 +60,7 @@ export async function POST(req: NextRequest) {
     });
     if (!isNew) {
       logger.info("Webhook duplicate event", { orderCode: verified.orderCode, eventHash });
-      return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 });
+      return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
 
     // Update order status based on webhook
@@ -56,10 +68,17 @@ export async function POST(req: NextRequest) {
     await convex.mutation(api.orders.setStatusByOrderCode, { orderCode: verified.orderCode, status });
     logger.info("Order status updated from webhook", { orderCode: verified.orderCode, status });
 
-    return new Response(JSON.stringify({ received: true }), { status: 200 });
+    return new Response(JSON.stringify({ received: true }), { status: 200, headers: { 'content-type': 'application/json' } });
   } catch (e: any) {
     logger.error("Webhook error", { error: e?.message || String(e) });
-    return new Response(JSON.stringify({ error: e?.message || "Webhook error" }), { status: 500 });
+    return new Response(JSON.stringify({ error: e?.message || "Webhook error" }), { status: 500, headers: { 'content-type': 'application/json' } });
   }
 }
 
+export async function GET() {
+  return new Response(JSON.stringify({ ok: true, healthcheck: true, method: 'GET' }), { status: 200, headers: { 'content-type': 'application/json' } });
+}
+
+export async function HEAD() {
+  return new Response(null, { status: 200, headers: { 'content-type': 'application/json' } });
+}
