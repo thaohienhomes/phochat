@@ -23,6 +23,42 @@ import { toChatSessionId } from "@/lib/ids";
 // Types (lightweight)
 type ChatMessage = { id: string; role: string; content: string; createdAt: number };
 
+function TypingDots() {
+  return (
+    <span className="inline-flex items-center gap-1 text-muted-foreground">
+      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60 animate-pulse" />
+      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60 animate-pulse [animation-delay:120ms]" />
+      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60 animate-pulse [animation-delay:240ms]" />
+    </span>
+  );
+}
+
+function renderMessage(content: string) {
+  // Minimal markdown: support triple backtick code fences; rest as plain text
+  const parts = content.split(/```([\s\S]*?)```/g);
+  const nodes: React.ReactNode[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const isCode = i % 2 === 1;
+    const seg = parts[i];
+    if (isCode) {
+      nodes.push(
+        <pre key={i} className="my-2 overflow-x-auto rounded-md bg-muted p-2 text-xs">
+          <code>{seg}</code>
+        </pre>
+      );
+    } else if (seg) {
+      // Convert newlines to <br />
+      const lines = seg.split("\n");
+      nodes.push(
+        <p key={i} className="whitespace-pre-wrap leading-relaxed">
+          {lines.join("\n")}
+        </p>
+      );
+    }
+  }
+  return <>{nodes}</>;
+}
+
 const MODELS = [
   { id: "gpt-4o-mini", label: "GPT-4o mini" },
   { id: "gpt-4o", label: "GPT-4o" },
@@ -49,13 +85,19 @@ function SessionMessages({ sessionId }: { sessionId: string | null }) {
       {!loading && messages.length === 0 && (
         <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
       )}
-      {!loading && messages.map((m) => (
-        <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-          <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
-            {m.content}
+      {!loading && messages.map((m) => {
+        const isUser = m.role === "user";
+        return (
+          <div key={m.id} className={`flex items-start gap-2 ${isUser ? "justify-end flex-row-reverse" : "justify-start"}`}>
+            <div className={`mt-0.5 h-6 w-6 shrink-0 rounded-full text-[10px] flex items-center justify-center ${isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+              {isUser ? "U" : "A"}
+            </div>
+            <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+              {renderMessage(m.content)}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -75,6 +117,22 @@ function ChatPageInner() {
 
   const [creating, setCreating] = React.useState<boolean>(false);
   const [copied, setCopied] = React.useState(false);
+
+
+  const [showScrollDown, setShowScrollDown] = React.useState(false);
+  const scrollToBottom = React.useCallback(() => {
+    const el = scrollRef.current; if (!el) return; el.scrollTop = el.scrollHeight;
+  }, []);
+  React.useEffect(() => {
+    const el = scrollRef.current; if (!el) return;
+    const onScroll = () => {
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+      setShowScrollDown(!nearBottom);
+    };
+    el.addEventListener("scroll", onScroll);
+    onScroll();
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
 
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { user } = useUser();
@@ -97,6 +155,7 @@ function ChatPageInner() {
         setIsPro(isProFromEntitlements(customerInfo?.entitlements?.active));
       }
     };
+
     initRevenueCat();
   }, [user]);
 
@@ -115,6 +174,7 @@ function ChatPageInner() {
         console.log(e);
       }
     }
+
   };
 
   React.useEffect(() => {
@@ -363,14 +423,24 @@ function ChatPageInner() {
           </div>
         )}
 
-        <div ref={scrollRef} className="h-[55vh] overflow-y-auto rounded-md border p-3 space-y-3 bg-background">
-          <SessionMessages sessionId={sessionId} />
-          {streamingText && (
-            <div className="flex justify-start">
-              <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap bg-muted text-foreground">
-                {streamingText}
+        <div className="relative">
+          <div ref={scrollRef} className="h-[55vh] overflow-y-auto rounded-md border p-3 space-y-3 bg-background">
+            <SessionMessages sessionId={sessionId} />
+            {sending && !streamingText && (
+              <div className="flex items-start gap-2 justify-start">
+                <div className="mt-0.5 h-6 w-6 shrink-0 rounded-full text-[10px] flex items-center justify-center bg-muted text-foreground">A</div>
+                <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm bg-muted text-foreground"><TypingDots /></div>
               </div>
-            </div>
+            )}
+            {!!streamingText && (
+              <div className="flex items-start gap-2 justify-start">
+                <div className="mt-0.5 h-6 w-6 shrink-0 rounded-full text-[10px] flex items-center justify-center bg-muted text-foreground">A</div>
+                <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm bg-muted text-foreground">{renderMessage(streamingText)}</div>
+              </div>
+            )}
+          </div>
+          {showScrollDown && (
+            <Button size="icon" variant="secondary" className="absolute bottom-3 right-3 rounded-full shadow" onClick={scrollToBottom} aria-label="Scroll to bottom">↓</Button>
           )}
         </div>
 
