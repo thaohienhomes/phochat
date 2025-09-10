@@ -32,3 +32,18 @@ describe("deriveOrderStatus", () => {
   });
 });
 
+
+
+
+describe("idempotency event hash behavior", () => {
+  it("treats identical (orderCode, code, id) as the same event", () => {
+    const a = { orderCode: 123, code: "00", id: "evt_1" };
+    const b = { id: "evt_1", code: "00", orderCode: 123 };
+    expect(stableHash(a)).toBe(stableHash(b));
+  });
+  it("treats different event id as different events (retry vs new)", () => {
+    const a = { orderCode: 123, code: "00", id: "evt_1" };
+    const b = { orderCode: 123, code: "00", id: "evt_2" };
+    expect(stableHash(a)).not.toBe(stableHash(b));
+  });
+});

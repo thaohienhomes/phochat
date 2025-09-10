@@ -27,6 +27,24 @@ export default function OrderDetailPage() {
   const checkoutUrl = order?.checkoutUrl as string | undefined;
   const status = order?.status as string | undefined;
 
+
+  const [nextRefresh, setNextRefresh] = React.useState(8);
+  React.useEffect(() => {
+    if (status !== "pending" || !orderCode) return;
+    let tick = 8;
+    setNextRefresh(tick);
+    const timer = setInterval(() => {
+      tick -= 1;
+      if (tick <= 0) {
+        refreshStatus();
+        tick = 8;
+      }
+      setNextRefresh(tick);
+    }, 1000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, orderCode]);
+
   async function refreshStatus() {
     if (!orderCode) return;
     setBusy(true);
@@ -69,22 +87,29 @@ export default function OrderDetailPage() {
 
           {status === "pending" ? (
             <div className="rounded bg-amber-50 p-3 text-sm">
-              <p className="mb-2">This order is pending. Complete the payment using the button below, then this page will update automatically once PayOS notifies us.</p>
+              <p className="mb-2">
+                <span className="mr-1">⏳</span>
+                Payment is pending. Please complete the QR/checkout in PayOS. This page auto-checks every 8s
+                <span className="ml-1 text-muted-foreground">(next in {nextRefresh}s)</span>.
+              </p>
               <div className="flex items-center gap-2">
                 {checkoutUrl && (
                   <Button className="bg-emerald-600 text-white" asChild>
                     <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">Open PayOS Checkout</a>
                   </Button>
                 )}
-                <Button variant="outline" onClick={refreshStatus} disabled={busy}>{busy ? "Refreshing..." : "Refresh status"}</Button>
+                <Button variant="outline" onClick={refreshStatus} disabled={busy}>{busy ? "Refreshing..." : "Refresh now"}</Button>
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                If you already paid, please wait a few seconds for the webhook to arrive. This page will reflect the final status automatically.
+              </p>
             </div>
           ) : status === "succeeded" ? (
-            <div className="rounded bg-emerald-50 p-3 text-sm">Payment completed successfully.</div>
+            <div className="rounded bg-emerald-50 p-3 text-sm">✅ Payment completed successfully.</div>
           ) : status === "failed" ? (
-            <div className="rounded bg-red-50 p-3 text-sm">Payment failed. Please try again.</div>
+            <div className="rounded bg-red-50 p-3 text-sm">❌ Payment failed. Please try again.</div>
           ) : status === "expired" ? (
-            <div className="rounded bg-gray-50 p-3 text-sm">Order expired. Create a new payment.</div>
+            <div className="rounded bg-gray-50 p-3 text-sm">⌛ Order expired. Create a new payment.</div>
           ) : null}
         </div>
       )}
