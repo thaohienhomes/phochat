@@ -13,7 +13,7 @@ export default function OrdersPage() {
   async function reconcile() {
     try {
       setBusy(true);
-      const res = await fetch("/api/payos/admin/reconcile", {
+      const res = await fetch("/api/admin/reconcile/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ olderThanMs: 15 * 60 * 1000 }),
