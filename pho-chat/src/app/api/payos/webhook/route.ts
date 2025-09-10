@@ -29,7 +29,6 @@ export async function POST(req: NextRequest) {
       logger.info('Webhook JSON parse failed; treating as healthcheck', { error: err?.message || String(err) });
       return new Response(JSON.stringify({ ok: true, healthcheck: true }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
-    }
 
     const payos = getPayOS();
     let verified: any;
