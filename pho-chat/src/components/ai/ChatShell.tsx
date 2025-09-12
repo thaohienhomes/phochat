@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import Logo from "@/components/brand/Logo";
 import ChatApp from "@/app/chat/page";
-import { Menu } from "lucide-react";
+import { Menu, Moon, Sun } from "lucide-react";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -16,6 +16,29 @@ export default function ChatShell() {
   const [sidebarVisible, setSidebarVisible] = React.useState(true);
   const { isAuthenticated } = useConvexAuth();
   const sessions = useQuery((api as any).functions.getChatSession.listUserSessions, isAuthenticated ? { limit: 50 } : "skip");
+
+
+  // Theme state with persistence
+  const [theme, setTheme] = React.useState<"light" | "dark">("light");
+  React.useEffect(() => {
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem("pho_theme") : null;
+      const prefersDark = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const initial = (saved === "dark" || (!saved && prefersDark)) ? "dark" : "light";
+      setTheme(initial);
+      if (initial === "dark") document.documentElement.classList.add("dark");
+      else document.documentElement.classList.remove("dark");
+    } catch {}
+  }, []);
+  const toggleTheme = React.useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      if (next === "dark") document.documentElement.classList.add("dark");
+      else document.documentElement.classList.remove("dark");
+      try { localStorage.setItem("pho_theme", next); } catch {}
+      return next;
+    });
+  }, []);
 
   const fireNewChat = React.useCallback(() => {
     try {
@@ -43,7 +66,7 @@ export default function ChatShell() {
 
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-3 sm:px-4">
+        <div className="mx-auto flex h-14 w-full max-w-none items-center justify-between px-3 sm:px-4">
           <div className="flex items-center gap-2">
             {/* Mobile: open sidebar */}
             <Sheet open={open} onOpenChange={setOpen}>
@@ -101,6 +124,9 @@ export default function ChatShell() {
               {sidebarVisible ? "Hide sidebar" : "Show sidebar"}
             </Button>
             <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={fireNewChat}>New chat</Button>
+            <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={toggleTheme}>
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <SignedOut>
               <SignInButton mode="modal">
                 <Button size="sm">Sign in</Button>
@@ -114,7 +140,7 @@ export default function ChatShell() {
       </header>
 
       {/* Body: Sidebar + Main */}
-      <div className="mx-auto flex w-full max-w-6xl flex-1 gap-4 px-3 py-4 sm:px-4">
+      <div className="mx-auto flex w-full max-w-none flex-1 gap-4 px-3 py-4 sm:px-4">
         {/* Sidebar (desktop) */}
         {sidebarVisible && (
           <aside className="hidden w-72 shrink-0 md:block" aria-label="Chat session history">

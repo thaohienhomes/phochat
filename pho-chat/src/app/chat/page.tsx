@@ -96,7 +96,7 @@ function SessionMessages({ sessionId }: { sessionId: string | null }) {
             <div className={`mt-0.5 h-6 w-6 shrink-0 rounded-full text-[10px] flex items-center justify-center ${isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
               {isUser ? "U" : "A"}
             </div>
-            <div className={`max-w-[85%] md:max-w-[75%] rounded-xl px-4 py-2 text-sm ${isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+            <div className={`max-w-[95%] md:max-w-[80%] xl:max-w-[70%] rounded-xl px-4 py-2 text-sm ${isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
               {renderMessage(m.content)}
             </div>
           </div>
@@ -415,7 +415,7 @@ function ChatPageInner() {
   }
 
   return (
-    <div className="mx-auto my-4 w-full max-w-4xl px-2 sm:px-4">
+    <div className="mx-auto my-4 w-full max-w-none px-2 sm:px-4">
       <Card className="p-4 sm:p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm text-muted-foreground">
@@ -469,13 +469,13 @@ function ChatPageInner() {
             {sending && !streamingText && (
               <div className="flex items-start gap-2 justify-start">
                 <div className="mt-0.5 h-6 w-6 shrink-0 rounded-full text-[10px] flex items-center justify-center bg-muted text-foreground">A</div>
-                <div className="max-w-[85%] md:max-w-[75%] rounded-xl px-4 py-2 text-sm bg-muted text-foreground"><TypingDots /></div>
+                <div className="max-w-[95%] md:max-w-[80%] xl:max-w-[70%] rounded-xl px-4 py-2 text-sm bg-muted text-foreground"><TypingDots /></div>
               </div>
             )}
             {!!streamingText && (
               <div className="flex items-start gap-2 justify-start">
                 <div className="mt-0.5 h-6 w-6 shrink-0 rounded-full text-[10px] flex items-center justify-center bg-muted text-foreground">A</div>
-                <div className="max-w-[85%] md:max-w-[75%] rounded-xl px-4 py-2 text-sm bg-muted text-foreground">{renderMessage(streamingText)}</div>
+                <div className="max-w-[95%] md:max-w-[80%] xl:max-w-[70%] rounded-xl px-4 py-2 text-sm bg-muted text-foreground">{renderMessage(streamingText)}</div>
               </div>
             )}
           </div>
