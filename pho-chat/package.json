@@ -11,7 +11,10 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
     "convex:dev": "convex dev",
     "postinstall": "npm install typescript",
-    "test": "vitest run -c vitest.config.ts"
+    "test": "vitest run -c vitest.config.ts",
+    "capture:install": "npx playwright install chromium",
+    "capture": "npx playwright test",
+    "capture:export": "node scripts/capture/export-media.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.23",
@@ -39,6 +42,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
