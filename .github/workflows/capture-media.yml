@@ -11,6 +11,9 @@ on:
     branches:
       - feature/ai-chat-v2-phase3-demo
 
+permissions:
+  contents: write
+
 jobs:
   capture:
     runs-on: ubuntu-latest

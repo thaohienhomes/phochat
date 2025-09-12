@@ -46,9 +46,10 @@ const videos = [
 const hasFfmpeg = ffmpegExists();
 
 for (const v of videos) {
-  const file = basename(v).toLowerCase();
+  // Match against full path (directory names include test titles)
+  const filePathLower = v.toLowerCase();
   for (const m of mapping) {
-    if (file.includes(m.match)) {
+    if (filePathLower.includes(m.match)) {
       const outPath = join(DOCS_DIR, m.out);
       if (hasFfmpeg) {
         const args = ["-y", "-i", v, "-vf", "fps=10,scale=900:-1:flags=lanczos", outPath];
