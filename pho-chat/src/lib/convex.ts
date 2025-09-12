@@ -7,7 +7,20 @@ export function getConvexClient(): ConvexReactClient | null {
   if (typeof window === "undefined") return null;
 
   const INLINE_URL = process.env.NEXT_PUBLIC_CONVEX_URL as string | undefined;
-  const fallbackDevUrl = window.location.hostname === "localhost" ? "http://127.0.0.1:3210" : undefined;
+
+  // More robust local fallbacks for common dev hosts
+  const host = window.location.hostname;
+  const isLocalHost =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "[::1]" ||
+    host === "::1" ||
+    host.endsWith(".local") ||
+    host.startsWith("192.168.") ||
+    host.startsWith("10.") ||
+    host.startsWith("172.16.") || host.startsWith("172.17.") || host.startsWith("172.18.") || host.startsWith("172.19.") || host.startsWith("172.2") || host.startsWith("172.30.") || host.startsWith("172.31.");
+
+  const fallbackDevUrl = isLocalHost ? "http://127.0.0.1:3210" : undefined;
   const resolvedUrl = INLINE_URL ?? fallbackDevUrl;
 
   if (!resolvedUrl) {

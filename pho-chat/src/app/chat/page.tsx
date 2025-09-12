@@ -20,6 +20,10 @@ import { Purchases } from "@revenuecat/purchases-js";
 import { RcPackage, extractPackages, isProFromEntitlements } from "@/lib/revenuecat";
 import { toChatSessionId } from "@/lib/ids";
 
+
+// Feature flag to disable RevenueCat easily in dev/while troubleshooting
+const REVENUECAT_ENABLED = (process.env.NEXT_PUBLIC_REVENUECAT_ENABLED === "1" || process.env.NEXT_PUBLIC_REVENUECAT_ENABLED === "true");
+
 // Types (lightweight)
 type ChatMessage = { id: string; role: string; content: string; createdAt: number };
 
@@ -92,7 +96,7 @@ function SessionMessages({ sessionId }: { sessionId: string | null }) {
             <div className={`mt-0.5 h-6 w-6 shrink-0 rounded-full text-[10px] flex items-center justify-center ${isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
               {isUser ? "U" : "A"}
             </div>
-            <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+            <div className={`max-w-[85%] md:max-w-[75%] rounded-xl px-4 py-2 text-sm ${isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
               {renderMessage(m.content)}
             </div>
           </div>
@@ -126,7 +130,7 @@ function ChatPageInner() {
   React.useEffect(() => {
     const el = scrollRef.current; if (!el) return;
     const onScroll = () => {
-      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 96;
       setShowScrollDown(!nearBottom);
     };
     el.addEventListener("scroll", onScroll);
@@ -143,16 +147,21 @@ function ChatPageInner() {
   const [isPro, setIsPro] = React.useState(false);
 
   React.useEffect(() => {
+    if (!REVENUECAT_ENABLED) return; // disabled via flag
     const initRevenueCat = async () => {
       if (user && typeof window !== 'undefined') {
         const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
-        if (!apiKey) return;
+        if (!apiKey) return; // not configured in this env
         const appUserId = user.id || (Purchases as any).generateRevenueCatAnonymousAppUserId?.();
-        const purchases = Purchases.configure({ apiKey, appUserId });
-        const offerings = await purchases.getOfferings();
-        setProducts(extractPackages(offerings));
-        const customerInfo = await purchases.getCustomerInfo();
-        setIsPro(isProFromEntitlements(customerInfo?.entitlements?.active));
+        try {
+          const purchases = Purchases.configure({ apiKey, appUserId });
+          const offerings = await purchases.getOfferings();
+          setProducts(extractPackages(offerings));
+          const customerInfo = await purchases.getCustomerInfo();
+          setIsPro(isProFromEntitlements(customerInfo?.entitlements?.active));
+        } catch (e) {
+          console.warn('[RevenueCat] Initialization skipped due to invalid or missing Web Billing API key.', e);
+        }
       }
     };
 
@@ -161,8 +170,9 @@ function ChatPageInner() {
 
   const purchasePackage = async (pack: RcPackage) => {
     try {
+      if (!REVENUECAT_ENABLED) return; // disabled via flag
       const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY;
-      if (!apiKey) return;
+      if (!apiKey) return; // not configured in this env
       const appUserId = user?.id || (Purchases as any).generateRevenueCatAnonymousAppUserId?.();
       const purchases = Purchases.configure({ apiKey, appUserId });
       const result = await purchases.purchase({ rcPackage: pack as any });
@@ -171,7 +181,7 @@ function ChatPageInner() {
       }
     } catch (e) {
       if (e && typeof e === 'object' && !(e as any).userCancelled) {
-        console.log(e);
+        console.warn('[RevenueCat] Purchase attempt failed or misconfigured. Skipping.', e);
       }
     }
 
@@ -209,7 +219,7 @@ function ChatPageInner() {
   React.useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80; // px
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 96; // px
     if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [streamingText, sending, sessionId]);
 
@@ -223,6 +233,13 @@ function ChatPageInner() {
     const key = `chat.input.${sessionId || "no-session"}`;
     try { localStorage.setItem(key, input); } catch {}
   }, [input, sessionId]);
+
+  React.useEffect(() => {
+    const el = textareaRef.current; if (!el) return;
+    const onFocus = () => { scrollToBottom(); };
+    el.addEventListener("focus", onFocus);
+    return () => { el.removeEventListener("focus", onFocus); };
+  }, [scrollToBottom]);
 
   function handleNewChat() {
     setSessionId(null);
@@ -275,6 +292,29 @@ function ChatPageInner() {
       setCreating(false);
     }
   }
+
+  // Global new-chat trigger from the shell
+  React.useEffect(() => {
+    const onNew = () => { handleNewChat(); handleCreateSession(); };
+    window.addEventListener("pho:new-chat", onNew as any);
+    return () => window.removeEventListener("pho:new-chat", onNew as any);
+  }, []);
+
+  // Open specific session from shell
+  React.useEffect(() => {
+    const onOpen = (e: any) => {
+      const id = e?.detail ? String(e.detail) : null;
+      if (!id) return;
+      setStreamingText("");
+      setInput("");
+      setError(null);
+      setSessionId(id);
+      // let UI settle then scroll
+      setTimeout(() => { try { scrollToBottom(); textareaRef.current?.focus(); } catch {} }, 50);
+    };
+    window.addEventListener("pho:open-session", onOpen as any);
+    return () => window.removeEventListener("pho:open-session", onOpen as any);
+  }, [scrollToBottom]);
 
   async function handleSend() {
     if (!user) return;
@@ -375,8 +415,8 @@ function ChatPageInner() {
   }
 
   return (
-    <div className="mx-auto my-6 max-w-3xl">
-      <Card className="p-4 space-y-4">
+    <div className="mx-auto my-4 w-full max-w-4xl px-2 sm:px-4">
+      <Card className="p-4 sm:p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm text-muted-foreground">
             Tier: <span className="font-medium">{isPro ? "Pro" : tier ?? "..."}</span>{" "}
@@ -424,18 +464,18 @@ function ChatPageInner() {
         )}
 
         <div className="relative">
-          <div ref={scrollRef} className="h-[55vh] overflow-y-auto rounded-md border p-3 space-y-3 bg-background">
+          <div ref={scrollRef} className="h-[56vh] sm:h-[60vh] overflow-y-auto rounded-md border p-3 sm:p-4 space-y-3 bg-background">
             <SessionMessages sessionId={sessionId} />
             {sending && !streamingText && (
               <div className="flex items-start gap-2 justify-start">
                 <div className="mt-0.5 h-6 w-6 shrink-0 rounded-full text-[10px] flex items-center justify-center bg-muted text-foreground">A</div>
-                <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm bg-muted text-foreground"><TypingDots /></div>
+                <div className="max-w-[85%] md:max-w-[75%] rounded-xl px-4 py-2 text-sm bg-muted text-foreground"><TypingDots /></div>
               </div>
             )}
             {!!streamingText && (
               <div className="flex items-start gap-2 justify-start">
                 <div className="mt-0.5 h-6 w-6 shrink-0 rounded-full text-[10px] flex items-center justify-center bg-muted text-foreground">A</div>
-                <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm bg-muted text-foreground">{renderMessage(streamingText)}</div>
+                <div className="max-w-[85%] md:max-w-[75%] rounded-xl px-4 py-2 text-sm bg-muted text-foreground">{renderMessage(streamingText)}</div>
               </div>
             )}
           </div>
@@ -469,7 +509,7 @@ function ChatPageInner() {
                   }
                 }}
                 placeholder="Type your message..."
-                className="min-h-[100px]"
+                className="min-h-[72px] sm:min-h-[84px] resize-none"
                 disabled={!isAuthenticated}
               />
             </TooltipTrigger>
