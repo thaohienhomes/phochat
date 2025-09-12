@@ -36,9 +36,31 @@ jobs:
           npm i -D @playwright/test
           npx playwright install --with-deps chromium webkit
 
+      - name: Determine PREVIEW_URL
+        id: set_preview
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.preview_url }}" ]; then
+            echo "preview=${{ inputs.preview_url }}" >> $GITHUB_OUTPUT
+          else
+            echo "preview=https://pho-chat-git-feature-ai-d63aa6-thaohienhomes-gmailcoms-projects.vercel.app" >> $GITHUB_OUTPUT
+          fi
+          echo "Using PREVIEW_URL=$(cat $GITHUB_OUTPUT | cut -d= -f2)"
+
+      - name: Verify preview URL is reachable
+        env:
+          PREVIEW_URL: ${{ steps.set_preview.outputs.preview }}
+        run: |
+          echo "Checking $PREVIEW_URL"
+          for i in 1 2 3; do
+            if curl -sSf -o /dev/null "$PREVIEW_URL"; then
+              echo "Preview reachable"; break;
+            fi
+            echo "Attempt $i failed; retrying in 5s..."; sleep 5;
+          done
+
       - name: Run capture tests (desktop + mobile)
         env:
-          PREVIEW_URL: ${{ inputs.preview_url }}
+          PREVIEW_URL: ${{ steps.set_preview.outputs.preview }}
         run: npm run capture --silent
 
       - name: Export media to docs
