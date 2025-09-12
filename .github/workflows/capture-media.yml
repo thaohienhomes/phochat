@@ -31,10 +31,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright Chromium
+      - name: Install Playwright browsers (Chromium + WebKit)
         run: |
           npm i -D @playwright/test
-          npx playwright install chromium
+          npx playwright install --with-deps chromium webkit
 
       - name: Run capture tests (desktop + mobile)
         env:
