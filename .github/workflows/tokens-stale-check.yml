@@ -1,0 +1,48 @@
+name: Check Token RGB Staleness
+
+on:
+  push:
+    paths:
+      - 'pho-chat/docs/design/**'
+      - 'scripts/convert-oklch.js'
+  pull_request:
+    paths:
+      - 'pho-chat/docs/design/**'
+      - 'scripts/convert-oklch.js'
+
+jobs:
+  check-stale:
+    name: Verify committed RGB tokens are up to date (if present)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Convert OKLCH to RGB in temp
+        run: |
+          node scripts/convert-oklch.js --in pho-chat/docs/design/tokens.ios.json --out /tmp/tokens.ios.rgb.json --alpha rgba
+          node scripts/convert-oklch.js --in pho-chat/docs/design/tokens.android.json --out /tmp/tokens.android.rgb.json
+
+      - name: Compare iOS RGB (skip if not committed)
+        run: |
+          set -e
+          if [ -f "pho-chat/docs/design/tokens.ios.rgb.json" ]; then
+            diff -u pho-chat/docs/design/tokens.ios.rgb.json /tmp/tokens.ios.rgb.json || (echo "❌ iOS RGB tokens are stale. Run: npm --prefix pho-chat run tokens:ios" && exit 1)
+          else
+            echo "ℹ️ Skipping iOS check (no committed pho-chat/docs/design/tokens.ios.rgb.json)"
+          fi
+
+      - name: Compare Android RGB (skip if not committed)
+        run: |
+          set -e
+          if [ -f "pho-chat/docs/design/tokens.android.rgb.json" ]; then
+            diff -u pho-chat/docs/design/tokens.android.rgb.json /tmp/tokens.android.rgb.json || (echo "❌ Android RGB tokens are stale. Run: npm --prefix pho-chat run tokens:android" && exit 1)
+          else
+            echo "ℹ️ Skipping Android check (no committed pho-chat/docs/design/tokens.android.rgb.json)"
+          fi
+

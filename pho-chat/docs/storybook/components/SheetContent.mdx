@@ -1,0 +1,24 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Components/SheetContent" />
+
+# SheetContent
+
+Slide-over panel content.
+
+## Props
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| side | 'top'|'right'|'bottom'|'left' | No | 'right' | Slide-in side |
+
+## Example
+
+````tsx
+import { Sheet, SheetTrigger, SheetContent } from '@/components/ui/sheet';
+<Sheet>
+  <SheetTrigger asChild><button>Open</button></SheetTrigger>
+  <SheetContent side="right">Panel</SheetContent>
+</Sheet>
+````
+

@@ -1,0 +1,54 @@
+name: Storybook Preview (Vercel)
+
+on:
+  pull_request:
+    paths:
+      - 'pho-chat/**'
+      - '.github/workflows/storybook-vercel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    name: Deploy Storybook to Vercel (Preview)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm --prefix pho-chat ci
+
+      - name: Generate tokens MDX
+        run: npm --prefix pho-chat run tokens:mdx
+
+      - name: Build Storybook
+        run: npm --prefix pho-chat run storybook:build
+
+      - name: Deploy to Vercel (if secrets provided)
+        id: vercel
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: pho-chat/storybook-static
+
+      - name: Comment Preview URL
+        if: ${{ steps.vercel.outputs.preview-url != '' }}
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: |
+            Storybook Vercel Preview: ${{ steps.vercel.outputs.preview-url }}
+            (This comment was posted automatically.)
+

@@ -1,0 +1,35 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Foundations/Typography" />
+
+# Typography
+
+This app uses Geist Sans for UI and Geist Mono for code via `next/font`. In CSS, they are exposed as variables:
+
+- `--font-geist-sans`
+- `--font-geist-mono`
+
+These are set on the `<body>` class in `src/app/layout.tsx` and consumed via Tailwind's `@theme inline` in `globals.css`.
+
+## Samples
+
+<div style={{ display:'grid', gap:12 }}>
+  <div>
+    <div style={{ fontFamily: 'var(--font-geist-sans)', fontSize: 24, fontWeight: 600 }}>Heading / Geist Sans</div>
+    <div style={{ fontFamily: 'var(--font-geist-sans)', fontSize: 16 }}>Body text / Geist Sans</div>
+  </div>
+  <div>
+    <div style={{ fontFamily: 'var(--font-geist-mono)', fontSize: 16 }}>const mono = true;</div>
+  </div>
+</div>
+
+## Tailwind Usage
+
+Use Tailwind utility classes and semantic tokens (e.g., `text-foreground`, `bg-background`) for consistent theming.
+
+````tsx
+<h1 className="text-2xl font-semibold">Heading</h1>
+<p className="text-sm text-muted-foreground">Body copy</p>
+<code className="font-mono">const x = 1;</code>
+````
+

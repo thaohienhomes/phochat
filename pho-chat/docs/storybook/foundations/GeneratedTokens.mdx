@@ -1,0 +1,97 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Foundations/Generated Tokens" />
+
+<style>
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .swatch { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; font-size: 12px; }
+  .swatch .chip { height: 48px; }
+  .swatch div:last-child { padding: 8px; }
+  .radius { width: 140px; height: 60px; border: 1px solid #e5e7eb; background: #f6f7f8; display:flex; align-items:center; justify-content:center; font-size:12px; }
+</style>
+
+# Generated Tokens (from figma-tokens.json)
+
+These values are generated directly from the tokens JSON and do not depend on runtime CSS variables.
+
+## Light Colors
+
+<div className="grid">
+    <div className="swatch"><div className="chip" style={{background:'oklch(1 0 0)'}} />background</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.145 0 0)'}} />foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(1 0 0)'}} />card</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.145 0 0)'}} />card-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(1 0 0)'}} />popover</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.145 0 0)'}} />popover-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.205 0 0)'}} />primary</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />primary-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.97 0 0)'}} />secondary</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.205 0 0)'}} />secondary-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.97 0 0)'}} />muted</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.556 0 0)'}} />muted-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.97 0 0)'}} />accent</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.205 0 0)'}} />accent-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.577 0.245 27.325)'}} />destructive</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.922 0 0)'}} />border</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.922 0 0)'}} />input</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.708 0 0)'}} />ring</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.646 0.222 41.116)'}} />chart-1</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.6 0.118 184.704)'}} />chart-2</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.398 0.07 227.392)'}} />chart-3</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.828 0.189 84.429)'}} />chart-4</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.769 0.188 70.08)'}} />chart-5</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />sidebar</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.145 0 0)'}} />sidebar-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.205 0 0)'}} />sidebar-primary</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />sidebar-primary-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.97 0 0)'}} />sidebar-accent</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.205 0 0)'}} />sidebar-accent-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.922 0 0)'}} />sidebar-border</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.708 0 0)'}} />sidebar-ring</div>
+</div>
+
+## Dark Colors
+
+<div className="grid">
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.145 0 0)'}} />background</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.205 0 0)'}} />card</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />card-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.205 0 0)'}} />popover</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />popover-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.922 0 0)'}} />primary</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.205 0 0)'}} />primary-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.269 0 0)'}} />secondary</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />secondary-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.269 0 0)'}} />muted</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.708 0 0)'}} />muted-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.269 0 0)'}} />accent</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />accent-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.704 0.191 22.216)'}} />destructive</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(1 0 0 / 10%)'}} />border</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(1 0 0 / 15%)'}} />input</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.556 0 0)'}} />ring</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.488 0.243 264.376)'}} />chart-1</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.696 0.17 162.48)'}} />chart-2</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.769 0.188 70.08)'}} />chart-3</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.627 0.265 303.9)'}} />chart-4</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.645 0.246 16.439)'}} />chart-5</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.205 0 0)'}} />sidebar</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />sidebar-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.488 0.243 264.376)'}} />sidebar-primary</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />sidebar-primary-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.269 0 0)'}} />sidebar-accent</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.985 0 0)'}} />sidebar-accent-foreground</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(1 0 0 / 10%)'}} />sidebar-border</div>
+    <div className="swatch"><div className="chip" style={{background:'oklch(0.556 0 0)'}} />sidebar-ring</div>
+</div>
+
+## Radius
+
+<div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+    <div className="radius" style={{borderRadius:'10px'}}>base</div>
+    <div className="radius" style={{borderRadius:'6px'}}>sm</div>
+    <div className="radius" style={{borderRadius:'8px'}}>md</div>
+    <div className="radius" style={{borderRadius:'10px'}}>lg</div>
+    <div className="radius" style={{borderRadius:'14px'}}>xl</div>
+</div>

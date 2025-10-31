@@ -1,0 +1,28 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Components/DropdownMenuItem" />
+
+# DropdownMenuItem
+
+Menu item with optional destructive intent and inset layout.
+
+## Props
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| variant | 'default'|'destructive' | No | default | Color intent |
+| inset | boolean | No | false | Indented item layout |
+
+## Example
+
+````tsx
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+<DropdownMenu>
+  <DropdownMenuTrigger asChild><button>Open</button></DropdownMenuTrigger>
+  <DropdownMenuContent>
+    <DropdownMenuItem>Default</DropdownMenuItem>
+    <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
+````
+

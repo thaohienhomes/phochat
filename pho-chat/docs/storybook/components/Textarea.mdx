@@ -1,0 +1,22 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Components/Textarea" />
+
+# Textarea
+
+Styled multi-line text control.
+
+## Props
+
+Inherits all native `<textarea>` props.
+
+## Example
+
+````tsx
+import { Textarea } from '@/components/ui/textarea';
+<label className="grid gap-1 text-sm">
+  <span className="text-muted-foreground">Description</span>
+  <Textarea rows={4} placeholder="Enter details..." />
+</label>
+````
+

@@ -1,0 +1,36 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Foundations/Colors (Live CSS Vars)" />
+
+# Colors (Live CSS Vars)
+
+This page previews colors using the app's CSS variables. It shows both Light and Dark (by toggling a wrapper class).
+
+## Light
+
+<div className="grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px,1fr))', gap:12 }}>
+  {[
+    '--background','--foreground','--primary','--primary-foreground','--secondary','--secondary-foreground','--muted','--muted-foreground','--accent','--accent-foreground','--destructive','--border','--input','--ring'
+  ].map((v) => (
+    <div key={v} style={{ border:'1px solid var(--border)', borderRadius:8, overflow:'hidden', fontSize:12 }}>
+      <div style={{ height:48, background:`var(${v})` }} />
+      <div style={{ padding:8 }}>{v}</div>
+    </div>
+  ))}
+</div>
+
+## Dark
+
+<div className="dark" style={{ padding:8, borderRadius:8, border:'1px solid var(--border)', background:'var(--background)', color:'var(--foreground)' }}>
+  <div className="grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px,1fr))', gap:12 }}>
+    {[
+      '--background','--foreground','--primary','--primary-foreground','--secondary','--secondary-foreground','--muted','--muted-foreground','--accent','--accent-foreground','--destructive','--border','--input','--ring'
+    ].map((v) => (
+      <div key={v} style={{ border:'1px solid var(--border)', borderRadius:8, overflow:'hidden', fontSize:12 }}>
+        <div style={{ height:48, background:`var(${v})` }} />
+        <div style={{ padding:8 }}>{v}</div>
+      </div>
+    ))}
+  </div>
+</div>
+

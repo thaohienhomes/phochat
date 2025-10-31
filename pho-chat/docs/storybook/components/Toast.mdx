@@ -1,0 +1,24 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Design System/Components/Toast" />
+
+# Toast API
+
+Lightweight in-app notifications via context.
+
+## API
+
+| Function | Signature |
+|---|---|
+| push | (t: { message: string; variant?: 'default'|'success'|'error'; duration?: number }) => void |
+| success | (message: string, duration?: number) => void |
+| error | (message: string, duration?: number) => void |
+
+## Example
+
+````tsx
+import { useToast } from '@/components/ui/toast';
+const { success, error } = useToast();
+success('Saved!', 1800);
+````
+

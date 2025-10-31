@@ -1,0 +1,37 @@
+name: Convert OKLCH Tokens to RGB
+
+on:
+  push:
+    paths:
+      - 'pho-chat/docs/design/**'
+      - 'scripts/convert-oklch.js'
+  pull_request:
+    paths:
+      - 'pho-chat/docs/design/**'
+      - 'scripts/convert-oklch.js'
+
+jobs:
+  convert:
+    name: Generate RGB token artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run conversion
+        run: |
+          npm --prefix pho-chat run tokens:convert-all
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tokens-rgb
+          path: |
+            pho-chat/docs/design/tokens.ios.rgb.json
+            pho-chat/docs/design/tokens.android.rgb.json
+
