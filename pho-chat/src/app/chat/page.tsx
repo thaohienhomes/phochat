@@ -30,11 +30,12 @@ const MODELS = [
 ];
 
 function SessionMessages({ sessionId }: { sessionId: string | null }) {
+  const { isAuthenticated } = useConvexAuth();
   const session = useQuery(
     api.functions.getChatSession.getChatSession,
-    sessionId ? { sessionId } : "skip"
+    sessionId && isAuthenticated ? { sessionId } : "skip"
   );
-  const loading = sessionId && !session;
+  const loading = sessionId && isAuthenticated && !session;
   const messages: ChatMessage[] = (session as any)?.messages ?? [];
   if (!sessionId) return null;
   return (
@@ -129,7 +130,7 @@ function ChatPageInner() {
   const tier = useQuery(api.users.getTier, isAuthenticated ? {} : "skip");
   const chatHistory = useQuery(
     api.functions.sendMessage.getChatHistoryForSession,
-    sessionId ? { sessionId: toChatSessionId(sessionId) } : "skip"
+    sessionId && isAuthenticated ? { sessionId: toChatSessionId(sessionId) } : "skip"
   );
 
   // Guard to prevent rapid double-submits
